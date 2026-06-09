@@ -22,19 +22,19 @@ apksign {
 apktransform {
     copy {
         when (it.buildType) {
-            "release" -> file("${it.name}/bqjs_${releaseName}.apk")
+            "release" -> file("${it.name}/bzzq_${releaseName}.apk")
             else -> null
         }
     }
 }
 
 android {
-    namespace = "io.github.bqjs"
+    namespace = "io.github.bzzq"
     compileSdk = 35
     buildToolsVersion = "36.0.0-rc4"
 
     defaultConfig {
-        applicationId = "io.github.bqjs"
+        applicationId = "io.github.bzzq"
         minSdk = 24
         targetSdk = 35
         versionCode = releaseCode

@@ -1,19 +1,19 @@
-package io.github.bqjs
+package io.github.bzzq
 
 import android.util.Log
-import io.github.bqjs.hooks.HookRegistry
+import io.github.bzzq.hooks.HookRegistry
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
 import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
 
-class BqjsModule : XposedModule() {
+class BzzqModule : XposedModule() {
     private var isNpatchFramework = false
 
     override fun onModuleLoaded(param: ModuleLoadedParam) {
         val frameworkName = getFrameworkName()
         isNpatchFramework = frameworkName.equals(NPATCH_FRAMEWORK_NAME, ignoreCase = true)
         val status = if (isNpatchFramework) "enabled" else "disabled"
-        log(Log.INFO, LOG_TAG, "Loaded in ${param.getProcessName()} on $frameworkName; bqjs is $status")
+        log(Log.INFO, LOG_TAG, "Loaded in ${param.getProcessName()} on $frameworkName; bzzq is $status")
     }
 
     override fun onPackageReady(param: PackageReadyParam) {
@@ -29,7 +29,7 @@ class BqjsModule : XposedModule() {
     }
 
     private companion object {
-        private const val LOG_TAG = "bqjs"
+        private const val LOG_TAG = "bzzq"
         private const val NPATCH_FRAMEWORK_NAME = "NPatch"
     }
 }

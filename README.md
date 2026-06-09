@@ -1,6 +1,6 @@
-# bqjs
+# bzzq
 
-bqjs 是一个基于 libxposed API 101 的 Android Xposed 模块项目。
+bzzq 是一个基于 libxposed API 101 的 Android Xposed 模块项目。
 
 当前版本只保留最小模块骨架：在目标应用包进入可用阶段时记录加载事件，不修改第三方应用的会员、试用、清晰度、权益或访问控制状态。
 
@@ -35,7 +35,7 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ## 兼容性说明
 
-bqjs 会在模块加载时读取 Xposed 框架名称。只有框架名称等于 `NPatch` 时，模块才会继续处理目标应用包；其他框架环境下会保持禁用状态。
+bzzq 会在模块加载时读取 Xposed 框架名称。只有框架名称等于 `NPatch` 时，模块才会继续处理目标应用包；其他框架环境下会保持禁用状态。
 
 ## 授权
 

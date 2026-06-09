@@ -15,4 +15,4 @@ dependencyResolutionManagement {
         maven(url = "https://api.xposed.info")
     }
 }
-rootProject.name = "bqjs"
+rootProject.name = "bzzq"

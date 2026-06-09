@@ -1,4 +1,4 @@
-package io.github.bqjs.hooks
+package io.github.bzzq.hooks
 
 import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
 
