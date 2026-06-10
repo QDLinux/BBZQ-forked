@@ -27,6 +27,7 @@ object HookRegistry {
             FreeCopyHook(packageName),
             SelectableTextHook(packageName),
             SharePurifyHook(packageName),
+            FullNumberFormatHook(packageName),
         )
     }
 

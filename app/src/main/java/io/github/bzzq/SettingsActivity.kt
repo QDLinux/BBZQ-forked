@@ -144,6 +144,14 @@ class SettingsActivity : Activity() {
                 defaultValue = false,
             ),
         )
+        content.addView(
+            createFeatureSwitch(
+                titleRes = R.string.full_number_format_title,
+                summaryRes = R.string.full_number_format_summary,
+                key = ModuleSettings.KEY_FULL_NUMBER_FORMAT_ENABLED,
+                defaultValue = false,
+            ),
+        )
         content.addView(createSectionTitle(R.string.story_filter_section_title))
         content.addView(
             createFeatureSwitch(

@@ -17,6 +17,7 @@ object ModuleSettings {
     const val KEY_DISABLE_LONG_PRESS_COPY_ENABLED = "disable_long_press_copy_enabled"
     const val KEY_ENHANCE_LONG_PRESS_COPY_ENABLED = "enhance_long_press_copy_enabled"
     const val KEY_PURIFY_SHARE_ENABLED = "purify_share_enabled"
+    const val KEY_FULL_NUMBER_FORMAT_ENABLED = "full_number_format_enabled"
     const val KEY_LAST_ACCESS_KEY = "last_access_key"
 
     val defaultStoryVideoAdTags = setOf("ad")
@@ -69,6 +70,9 @@ object ModuleSettings {
 
     fun isPurifyShareEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(KEY_PURIFY_SHARE_ENABLED, false)
+
+    fun isFullNumberFormatEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(KEY_FULL_NUMBER_FORMAT_ENABLED, false)
 }
 
 data class StoryVideoAdTag(
