@@ -1,249 +1,121 @@
 package io.github.bzzq.hooks
 
 import android.app.Activity
-import android.content.Intent
 import android.graphics.Color
-import android.os.Bundle
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import org.luckypray.dexkit.query.FindMethod
-import org.luckypray.dexkit.query.enums.StringMatchType
-import org.luckypray.dexkit.query.matchers.MethodMatcher
-import org.luckypray.dexkit.result.MethodData
-import java.lang.reflect.Method
-import java.util.LinkedHashSet
+import io.github.bzzq.InAppSettingsDialog
 
 /**
- * Injects the module entry into Bilibili's settings page.
- *
- * We keep the known activity names as a fast path and fall back to DexKit
- * so the hook survives package-level refactors and mild obfuscation.
+ * Injects the settings entrance only while Bilibili's settings page is visible.
  */
 class BiliEntryHook(
     override val targetPackageName: String,
 ) : AppHook {
     override fun install(context: HookContext) {
-        installCachedLifecycleHooks(context)
-
-        val resolvedActivities = resolveOtherSettingsActivities(context)
-        resolvedActivities.forEach { className ->
-            runCatching {
-                val clazz = Class.forName(className, false, context.classLoader)
-                var installed = false
-
-                clazz.findDeclaredMethod("onCreate", Bundle::class.java)?.let { method ->
-                    context.xposed.hook(method).intercept { chain ->
-                        val result = chain.proceed()
-                        scheduleInjection(chain.thisObject as? Activity, context.log)
-                        result
-                    }
-                    installed = true
-                }
-                clazz.findDeclaredMethod("onResume")?.let { method ->
-                    context.xposed.hook(method).intercept { chain ->
-                        val result = chain.proceed()
-                        scheduleInjection(chain.thisObject as? Activity, context.log)
-                        result
-                    }
-                    installed = true
-                }
-
-                if (installed) {
-                    context.log("Installed settings entry hook for $className", null)
-                } else {
-                    context.log("No usable lifecycle methods found for $className", null)
-                }
-            }.onFailure {
-                context.log("Unable to hook $className", it)
-            }
-        }
-
-        if (resolvedActivities.isEmpty()) {
-            installFallbackActivityHook(context)
-        }
-    }
-
-    private fun installCachedLifecycleHooks(context: HookContext) {
-        var installedAny = false
-        cachedLifecycleSpecs.forEach { spec ->
-            val cachedMethod = context.dexDesc(spec.cacheKey).toMethodOrNull()
-            if (cachedMethod != null) {
-                hookLifecycleMethod(context, cachedMethod)
-                installedAny = true
-                return@forEach
-            }
-
-            val searchedMethod = searchLifecycleMethod(context, spec)
-            if (searchedMethod != null) {
-                hookLifecycleMethod(context, searchedMethod)
-                installedAny = true
-            }
-        }
-        if (installedAny) {
-            context.log("Installed cached DexKit lifecycle hook(s) for settings entry", null)
-        }
-    }
-
-    private fun resolveOtherSettingsActivities(context: HookContext): List<String> {
-        val resolved = LinkedHashSet<String>()
-
-        OTHER_SETTING_ACTIVITY_NAMES.forEach { className ->
-            if (runCatching { Class.forName(className, false, context.classLoader) }.isSuccess) {
-                resolved += className
-            }
-        }
-        if (resolved.isNotEmpty()) return resolved.toList()
-
-        val cache = context.dexKitCache()
-        val cachedClassName = cache.readClassCache(CACHE_KEY_SETTINGS_ACTIVITY)
-        if (cachedClassName.isNotEmpty()) {
-            if (runCatching { Class.forName(cachedClassName, false, context.classLoader) }.isSuccess) {
-                return listOf(cachedClassName)
-            }
-        }
-
-        val dexKitMatches: List<String> = context.dexKitOrNull()
-            ?.findClass {
-                searchPackages(OTHER_SETTING_PACKAGE)
-                matcher {
-                    methods {
-                        add {
-                            name = "onCreate"
-                            returnType = "void"
-                            paramTypes("android.os.Bundle")
-                            usingStrings(SETTINGS_MARKERS, StringMatchType.Contains)
-                        }
-                        count(1..20)
-                    }
-                    usingStrings(SETTINGS_MARKERS, StringMatchType.Contains)
-                }
-            }
-            ?.map { it.name }
-            .orEmpty()
-        
-        if (dexKitMatches.isNotEmpty()) {
-            val matchedName: String = dexKitMatches.first()
-            cache.saveClassCache(CACHE_KEY_SETTINGS_ACTIVITY, matchedName)
-            resolved.add(matchedName)
-        }
-
-        if (resolved.isEmpty()) {
-            context.log("DexKit could not resolve a settings activity for ${context.packageName}", null)
-        }
-        return resolved.toList()
-    }
-
-    private fun searchLifecycleMethod(context: HookContext, spec: LifecycleSpec): Method? {
-        val bridge = context.dexKitOrNull() ?: return null
-        val methodData = runCatching {
-            bridge.findMethod(
-                FindMethod.create()
-                    .searchPackages(OTHER_SETTING_PACKAGE)
-                    .matcher(
-                        MethodMatcher.create()
-                            .name(spec.methodName)
-                            .modifiers(java.lang.reflect.Modifier.PUBLIC)
-                            .returnType("void")
-                            .paramCount(spec.paramCount)
-                            .apply {
-                                if (spec.paramTypes.isNotEmpty()) {
-                                    paramTypes(*spec.paramTypes.toTypedArray())
-                                }
-                                usingStrings(SETTINGS_MARKERS, StringMatchType.Contains)
-                            },
-                    ),
-            ).singleOrNull()
-        }.getOrNull() ?: return null
-
-        return methodData.toHookMethod(context, spec.cacheKey)
-    }
-
-    private fun MethodData.toHookMethod(context: HookContext, cacheKey: String): Method? {
-        return runCatching {
-            val method = getMethodInstance(context.classLoader)
-            method.isAccessible = true
-            context.dexKitCache().saveMethodCache(cacheKey, toDexMethod().serialize())
-            method
-        }.getOrElse {
-            context.log("Failed to materialize DexKit method for $cacheKey", it)
-            null
-        }
-    }
-
-    private fun hookLifecycleMethod(context: HookContext, method: Method) {
-        context.xposed.hook(method).intercept { chain ->
-            val result = chain.proceed()
-            scheduleInjection(chain.thisObject as? Activity, context.log)
-            result
-        }
-    }
-
-    private fun scheduleInjection(activity: Activity?, log: (String, Throwable?) -> Unit) {
-        val safeActivity = activity ?: return
-        val decor = safeActivity.window?.decorView ?: return
-        INJECTION_DELAYS_MS.forEach { delay ->
-            decor.postDelayed({
-                runCatching { injectIntoSettingsPage(safeActivity, log) }
-                    .onFailure { log("Failed to inject bzzq entry", it) }
-            }, delay)
-        }
-    }
-
-    private fun installFallbackActivityHook(context: HookContext) {
         runCatching {
             val onResume = Activity::class.java.getDeclaredMethod("onResume")
             context.xposed.hook(onResume).intercept { chain ->
                 val result = chain.proceed()
-                val activity = chain.thisObject as? Activity ?: return@intercept result
-                if (looksLikeSettingsActivity(activity)) {
-                    scheduleInjection(activity, context.log)
+                scheduleAttach(chain.thisObject as? Activity, context.log)
+                result
+            }
+
+            val onWindowFocusChanged =
+                Activity::class.java.getDeclaredMethod("onWindowFocusChanged", Boolean::class.javaPrimitiveType)
+            context.xposed.hook(onWindowFocusChanged).intercept { chain ->
+                val result = chain.proceed()
+                if (chain.getArg(0) == true) {
+                    scheduleAttach(chain.thisObject as? Activity, context.log)
                 }
                 result
             }
-            context.log("Installed fallback settings activity hook", null)
+
+            context.log("Installed settings-page entry hooks for ${context.packageName}", null)
         }.onFailure {
-            context.log("Failed to install fallback settings activity hook", it)
+            context.log("Failed to install settings-page entry hooks", it)
         }
     }
 
-    private fun injectIntoSettingsPage(activity: Activity, log: (String, Throwable?) -> Unit) {
+    private fun scheduleAttach(activity: Activity?, log: (String, Throwable?) -> Unit) {
+        val safeActivity = activity ?: return
+        val decor = safeActivity.window?.decorView ?: return
+        ATTACH_DELAYS_MS.forEach { delay ->
+            decor.postDelayed({
+                runCatching { attachEntry(safeActivity, log) }
+                    .onFailure { log("Failed to attach advanced settings entry", it) }
+            }, delay)
+        }
+    }
+
+    private fun attachEntry(activity: Activity, log: (String, Throwable?) -> Unit) {
         val root = activity.window?.decorView as? ViewGroup ?: return
-        if (root.findViewWithTag<View>(ENTRY_TAG) != null) return
+        if (!looksLikeSettingsPage(activity, root)) {
+            removeEntry(root, SETTINGS_ENTRY_TAG)
+            removeEntry(root, SETTINGS_OVERLAY_TAG)
+            return
+        }
+
+        val installedInline = installSettingsRow(activity, root, log)
+        if (installedInline) {
+            removeEntry(root, SETTINGS_OVERLAY_TAG)
+            return
+        }
+
+        installOverlayEntry(activity, root, log)
+    }
+
+    private fun installSettingsRow(activity: Activity, root: ViewGroup, log: (String, Throwable?) -> Unit): Boolean {
+        if (root.findViewWithTag<View>(SETTINGS_ENTRY_TAG) != null) return true
 
         val anchor = findAnchorRow(root)
-        val parent = anchor?.parent as? ViewGroup ?: findBestSettingsContainer(root) ?: return
-        val entry = createEntryView(activity).apply { tag = ENTRY_TAG }
+        val parent = anchor?.parent as? ViewGroup ?: findBestSettingsContainer(root) ?: return false
+        val entry = createSettingsEntryView(activity).apply { tag = SETTINGS_ENTRY_TAG }
 
         if (anchor != null) {
             val index = parent.indexOfChild(anchor)
             parent.addView(entry, index.coerceAtLeast(0))
-            log("Inserted bzzq entry before anchor row in settings", null)
-            return
+            log("Inserted inline advanced settings entry", null)
+            return true
         }
 
         parent.addView(entry, 0)
-        log("Inserted bzzq entry at top of fallback settings container", null)
+        log("Inserted inline advanced settings entry at container top", null)
+        return true
     }
 
-    private fun createEntryView(activity: Activity): View {
-        val versionName = runCatching {
-            activity.packageManager.getPackageInfo("io.github.bzzq", 0).versionName
-        }.getOrDefault("unknown")
+    private fun installOverlayEntry(activity: Activity, root: ViewGroup, log: (String, Throwable?) -> Unit) {
+        if (root.findViewWithTag<View>(SETTINGS_OVERLAY_TAG) != null) return
 
+        val entry = createOverlayEntryView(activity).apply { tag = SETTINGS_OVERLAY_TAG }
+        val container = root as? FrameLayout ?: return
+        container.addView(entry, createOverlayLayoutParams(activity))
+        log("Inserted overlay advanced settings entry for settings page", null)
+    }
+
+    private fun removeEntry(root: ViewGroup, tag: String) {
+        root.findViewWithTag<View>(tag)?.let { view ->
+            (view.parent as? ViewGroup)?.removeView(view)
+        }
+    }
+
+    private fun createSettingsEntryView(activity: Activity): View {
         val titleLayout = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         titleLayout.addView(TextView(activity).apply {
-            text = "bzzq"
+            text = ENTRY_TITLE
             textSize = 16f
             setTextColor(Color.parseColor("#111111"))
         })
         titleLayout.addView(TextView(activity).apply {
-            text = "模块设置"
+            text = ENTRY_SUMMARY
             textSize = 13f
             setTextColor(Color.parseColor("#888888"))
             setPadding(0, dp(activity, 4), 0, 0)
@@ -261,18 +133,57 @@ class BiliEntryHook(
             setBackgroundResource(outValue.resourceId)
             addView(titleLayout)
             addView(TextView(activity).apply {
-                text = "v$versionName"
+                text = "进入"
                 textSize = 13f
-                setTextColor(Color.parseColor("#9E9E9E"))
+                setTextColor(Color.parseColor("#FB7299"))
             })
-            setOnClickListener {
-                val intent = Intent().apply {
-                    setClassName("io.github.bzzq", "io.github.bzzq.SettingsActivity")
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                activity.startActivity(intent)
-            }
+            setOnClickListener { showSettingsDialog(activity) { _, _ -> } }
         }
+    }
+
+    private fun createOverlayEntryView(activity: Activity): View {
+        return TextView(activity).apply {
+            text = ENTRY_TITLE
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#FB7299"))
+                cornerRadius = dp(activity, 20).toFloat()
+            }
+            setPadding(dp(activity, 16), dp(activity, 10), dp(activity, 16), dp(activity, 10))
+            elevation = dp(activity, 6).toFloat()
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { showSettingsDialog(activity) { _, _ -> } }
+        }
+    }
+
+    private fun createOverlayLayoutParams(activity: Activity): FrameLayout.LayoutParams {
+        return FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).apply {
+            gravity = Gravity.END or Gravity.BOTTOM
+            rightMargin = dp(activity, 16)
+            bottomMargin = dp(activity, 32)
+        }
+    }
+
+    private fun showSettingsDialog(activity: Activity, log: (String, Throwable?) -> Unit) {
+        runCatching {
+            InAppSettingsDialog.show(activity)
+        }.onFailure {
+            log("Failed to show in-app settings dialog", it)
+        }
+    }
+
+    private fun looksLikeSettingsPage(activity: Activity, root: View): Boolean {
+        val className = activity.javaClass.name.lowercase()
+        if ("setting" in className || "preference" in className) return true
+        return findTextView(root) { text ->
+            SETTINGS_MARKERS.any { marker -> text.contains(marker) }
+        } != null
     }
 
     private fun findAnchorRow(view: View): View? {
@@ -294,9 +205,8 @@ class BiliEntryHook(
     private fun findBestSettingsContainer(view: View): ViewGroup? {
         if (view !is ViewGroup) return null
 
-        if (view.isVerticalContainer() && view.childCount >= 2) {
-            val textChildCount = countTextDrivenChildren(view)
-            if (textChildCount >= 2) return view
+        if (view.isVerticalContainer() && view.childCount >= 2 && countTextDrivenChildren(view) >= 2) {
+            return view
         }
 
         for (index in 0 until view.childCount) {
@@ -336,36 +246,19 @@ class BiliEntryHook(
         return null
     }
 
-    private fun looksLikeSettingsActivity(activity: Activity): Boolean {
-        val className = activity.javaClass.name.lowercase()
-        if ("setting" in className) return true
-        val root = activity.window?.decorView ?: return false
-        return findTextView(root) { text ->
-            SETTINGS_MARKERS.any { marker -> text.contains(marker) }
-        } != null
-    }
-
-    private fun ViewGroup.isVerticalContainer(): Boolean {
-        return this is LinearLayout && orientation == LinearLayout.VERTICAL
-    }
-
-    private fun Class<*>.findDeclaredMethod(name: String, vararg parameterTypes: Class<*>): Method? {
-        return runCatching { getDeclaredMethod(name, *parameterTypes) }.getOrNull()
-    }
+    private fun ViewGroup.isVerticalContainer(): Boolean =
+        this is LinearLayout && orientation == LinearLayout.VERTICAL
 
     private fun dp(activity: Activity, value: Int): Int =
         (value * activity.resources.displayMetrics.density).toInt()
 
     private companion object {
-        private const val CACHE_KEY_SETTINGS_ACTIVITY = "settings_activity"
-        private const val ENTRY_TAG = "bzzq_other_settings_entry"
-        private const val OTHER_SETTING_PACKAGE = "com.bilibili.app.comm.setting"
-        private val INJECTION_DELAYS_MS = longArrayOf(120L, 360L, 720L)
-        private val OTHER_SETTING_ACTIVITY_NAMES = listOf(
-            "com.bilibili.app.comm.setting.v2.OtherSettingActivity",
-            "com.bilibili.app.comm.setting.OtherSettingActivity",
-        )
+        private const val ENTRY_TITLE = "高级设置"
+        private const val ENTRY_SUMMARY = "bzzq 模块设置"
+
+        private val ATTACH_DELAYS_MS = longArrayOf(0L, 120L, 360L, 720L)
         private val SETTINGS_MARKERS = listOf(
+            "设置",
             "关于",
             "清理缓存",
             "推荐设置",
@@ -380,18 +273,7 @@ class BiliEntryHook(
             "推荐设置",
         )
 
-        private val cachedLifecycleSpecs = listOf(
-            LifecycleSpec("settings_on_create", "onCreate", listOf("android.os.Bundle")),
-            LifecycleSpec("settings_on_resume", "onResume", emptyList()),
-        )
-    }
-
-    private data class LifecycleSpec(
-        val cacheKey: String,
-        val methodName: String,
-        val paramTypes: List<String>,
-    ) {
-        val paramCount: Int
-            get() = paramTypes.size
+        private const val SETTINGS_ENTRY_TAG = "bzzq_settings_entry"
+        private const val SETTINGS_OVERLAY_TAG = "bzzq_settings_overlay_entry"
     }
 }

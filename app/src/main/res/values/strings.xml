@@ -1,7 +1,20 @@
 <resources>
     <string name="app_name">bzzq</string>
     <string name="settings_title">bzzq 模块设置</string>
-    <string name="xposed_description">API 101 research module active on NPatch, Vector, and LSPosed versions newer than 7700.</string>
+    <string name="xposed_description">面向哔哩哔哩客户端的轻量级 Xposed 模块。</string>
+
+    <string name="intro_title">bzzq</string>
+    <string name="intro_module_title">模块信息</string>
+    <string name="intro_module_body">当前版本：bzzq v%1$s</string>
+    <string name="intro_desc_title">模块介绍</string>
+    <string name="intro_desc_body">这是一个面向哔哩哔哩客户端的轻量级 Xposed 模块，提供广告净化、体验修补和一些常用增强功能。</string>
+    <string name="intro_entry_title">如何进入设置</string>
+    <string name="intro_entry_body">请打开哔哩哔哩，进入“我的”页面后点击“高级设置”即可进入模块设置；部分旧版本仍可通过设置页里的兜底入口进入。</string>
+    <string name="intro_launcher_title">桌面入口说明</string>
+    <string name="intro_launcher_body">桌面图标仅用于展示模块介绍，实际功能开关仍在应用内设置页中调整。</string>
+
+    <string name="entry_title">高级设置</string>
+    <string name="entry_summary">bzzq 模块设置</string>
 
     <string name="account_tools_section_title">账号工具</string>
     <string name="general_features_section_title">通用功能</string>
@@ -19,25 +32,25 @@
     <string name="auto_like_video_detail_title">视频详情页自动点赞</string>
     <string name="auto_like_video_detail_summary">进入视频详情页时自动点击点赞按钮。</string>
 
-    <string name="fix_live_quality_url_title">直播画质 URL 修正</string>
+    <string name="fix_live_quality_url_title">直播画质 URL 修复</string>
     <string name="fix_live_quality_url_summary">修复部分版本直播画质切换异常或 URL 错误的问题。</string>
 
-    <string name="skip_mini_game_reward_ad_title">跳过小游戏奖励广告</string>
+    <string name="skip_mini_game_reward_ad_title">跳过小游戏激励广告</string>
     <string name="skip_mini_game_reward_ad_summary">自动快进或关闭小游戏中的激励视频广告。</string>
 
     <string name="block_live_reservation_title">屏蔽直播预约</string>
     <string name="block_live_reservation_summary">移除视频详情页中的直播预约悬浮卡片。</string>
-    <string name="block_live_room_qoe_popup_title">屏蔽直播间效果打分</string>
-    <string name="block_live_room_qoe_popup_summary">移除直播间里的效果打分 / 体验调研弹窗。</string>
+    <string name="block_live_room_qoe_popup_title">屏蔽直播间效果弹窗</string>
+    <string name="block_live_room_qoe_popup_summary">移除直播间里的效果打分或体验调研弹窗。</string>
 
     <string name="disable_long_press_copy_title">去除长按复制</string>
-    <string name="disable_long_press_copy_summary">禁用长按评论/动态/视频简介后直接复制到剪贴板，减少误触。</string>
+    <string name="disable_long_press_copy_summary">禁用评论、动态、视频简介等场景里长按后直接复制到剪贴板的行为，减少误触。</string>
     <string name="enhance_long_press_copy_title">长按自由复制</string>
     <string name="enhance_long_press_copy_summary">需先开启“去除长按复制”。覆盖评论、动态、视频简介和部分私信场景，弹出可自由选择的文本窗口。</string>
     <string name="purify_share_title">分享净化</string>
     <string name="purify_share_summary">净化复制链接和分享文本中的追踪参数，尽量保留分页、评论定位等必要信息。</string>
     <string name="full_number_format_title">完整数字显示</string>
-    <string name="full_number_format_summary">在我的页和空间页显示完整统计数字，不再缩写为万、亿。</string>
+    <string name="full_number_format_summary">在“我的”和空间页显示完整统计数字，不再缩写为“万”“亿”。</string>
     <string name="unlock_comment_gif_title">评论区 GIF 解锁</string>
     <string name="unlock_comment_gif_summary">恢复评论区 GIF 缩略图播放，并移除图片右上角的大会员专属角标。</string>
 
