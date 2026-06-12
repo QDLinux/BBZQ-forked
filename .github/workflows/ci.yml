@@ -44,7 +44,8 @@ jobs:
       - name: Retrieve version
         run: |
           version=`awk -F "=" '$1 == "releaseName" {print $2}' gradle.properties`
-          echo "VERSION=$version" >> $GITHUB_ENV
+          count=`git rev-list --count HEAD`
+          echo "VERSION=$version-$count" >> $GITHUB_ENV
 
       - name: Build with gradle
         run: |
