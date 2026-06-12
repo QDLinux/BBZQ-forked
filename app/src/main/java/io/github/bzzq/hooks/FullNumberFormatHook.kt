@@ -1,7 +1,7 @@
 package io.github.bzzq.hooks
 
+import android.annotation.SuppressLint
 import android.view.View
-import android.view.ViewGroup
 import android.widget.TextView
 import io.github.bzzq.ModuleSettings
 import io.github.libxposed.api.XposedInterface
@@ -11,214 +11,150 @@ class FullNumberFormatHook(
     targetPackageName: String,
 ) : BaseHook(targetPackageName) {
     override fun startHook() {
-        val accountMine = HostAccess.findClass(classLoader, ACCOUNT_MINE_CLASS)
-        val memberCard = HostAccess.findClass(classLoader, MEMBER_CARD_CLASS)
-
-        val mineMethods = accountMine?.let(::findMineBindMethods).orEmpty()
-        val spaceMethods = memberCard?.let(::findSpaceBindMethods).orEmpty()
-
-        mineMethods.forEach(::hookMineBind)
-        spaceMethods.forEach(::hookSpaceBind)
-        log("Installed full-number hooks: mine=${mineMethods.size}, space=${spaceMethods.size}")
+        var hookCount = 0
+        hookCount += hookMineCountBindings()
+        hookCount += hookSpaceCountBindings()
+        log("Installed full-number UI hooks: $hookCount")
     }
 
-    private fun findMineBindMethods(accountMine: Class<*>): List<Method> {
-        val fixed = MINE_FRAGMENT_CLASSES
-            .mapNotNull { HostAccess.findClass(classLoader, it) }
-            .flatMap { HostAccess.methods(it).toList() }
-            .filter { isMineBind(it, accountMine) }
-        if (fixed.isNotEmpty()) return fixed.distinctBy(Method::toGenericString)
-
-        val bridge = context.dexKitOrNull() ?: return emptyList()
-        return runCatching {
-            bridge.findMethod {
-                searchPackages("tv.danmaku.bili", "com.bilibili")
-                matcher {
-                    returnType(Void.TYPE)
-                    paramTypes(accountMine, Boolean::class.javaPrimitiveType!!)
-                }
-            }.mapNotNull { data ->
-                runCatching { data.getMethodInstance(classLoader) }.getOrNull()
-            }.filter { method ->
-                method.declaringClass.name.contains("mine", true) ||
-                    method.declaringClass.simpleName.contains("UserCenter", true)
-            }
-        }.onFailure { log("Failed to discover mine number bind method", it) }
-            .getOrDefault(emptyList())
+    private fun hookMineCountBindings(): Int {
+        val fragmentClass = HostAccess.findClass(classLoader, *MINE_FRAGMENT_CLASSES) ?: return 0
+        val accountMineClass = HostAccess.findClass(classLoader, *ACCOUNT_MINE_CLASSES) ?: return 0
+        val methods = HostAccess.methods(fragmentClass)
+            .filter { it.returnType == Void.TYPE }
+            .filter { method -> method.parameterTypes.any(accountMineClass::isAssignableFrom) }
             .distinctBy(Method::toGenericString)
-    }
+            .toList()
 
-    private fun findSpaceBindMethods(memberCard: Class<*>): List<Method> {
-        val fixed = SPACE_FRAGMENT_CLASSES
-            .mapNotNull { HostAccess.findClass(classLoader, it) }
-            .flatMap { HostAccess.methods(it).toList() }
-            .filter { isSpaceBind(it, memberCard) }
-        if (fixed.isNotEmpty()) return fixed.distinctBy(Method::toGenericString)
-
-        val bridge = context.dexKitOrNull() ?: return emptyList()
-        return runCatching {
-            bridge.findMethod {
-                searchPackages("com.bilibili.app.authorspace")
-                matcher {
-                    returnType(Void.TYPE)
-                    paramTypes(memberCard)
+        methods.forEach { method ->
+            xposed.hook(method)
+                .setExceptionMode(XposedInterface.ExceptionMode.PASSTHROUGH)
+                .intercept { chain ->
+                    val result = chain.proceed()
+                    if (!ModuleSettings.isFullNumberFormatEnabled(prefs)) {
+                        return@intercept result
+                    }
+                    runCatching {
+                        applyMineCountTexts(
+                            fragment = resolveReceiver(chain.thisObject, chain.args, fragmentClass),
+                            accountMine = chain.args.firstOrNull(accountMineClass::isInstance),
+                        )
+                    }.onFailure {
+                        log("Failed to patch mine count text after ${method.name}", it)
+                    }
+                    result
                 }
-            }.mapNotNull { data ->
-                runCatching { data.getMethodInstance(classLoader) }.getOrNull()
-            }
-        }.onFailure { log("Failed to discover space number bind method", it) }
-            .getOrDefault(emptyList())
+        }
+        return methods.size
+    }
+
+    private fun hookSpaceCountBindings(): Int {
+        val fragmentClass = HostAccess.findClass(classLoader, *SPACE_FRAGMENT_CLASSES) ?: return 0
+        val memberCardClass = HostAccess.findClass(classLoader, *MEMBER_CARD_CLASSES) ?: return 0
+        val methods = HostAccess.methods(fragmentClass)
+            .filter { it.returnType == Void.TYPE }
+            .filter { method -> method.parameterTypes.any(memberCardClass::isAssignableFrom) }
             .distinctBy(Method::toGenericString)
+            .toList()
+
+        methods.forEach { method ->
+            xposed.hook(method)
+                .setExceptionMode(XposedInterface.ExceptionMode.PASSTHROUGH)
+                .intercept { chain ->
+                    val result = chain.proceed()
+                    if (!ModuleSettings.isFullNumberFormatEnabled(prefs)) {
+                        return@intercept result
+                    }
+                    runCatching {
+                        applySpaceCountTexts(
+                            fragment = resolveReceiver(chain.thisObject, chain.args, fragmentClass),
+                            memberCard = chain.args.firstOrNull(memberCardClass::isInstance),
+                        )
+                    }.onFailure {
+                        log("Failed to patch space count text after ${method.name}", it)
+                    }
+                    result
+                }
+        }
+        return methods.size
     }
 
-    private fun hookMineBind(method: Method) {
-        xposed.hook(method)
-            .setExceptionMode(XposedInterface.ExceptionMode.PASSTHROUGH)
-            .intercept { chain ->
-                val result = chain.proceed()
-                if (!ModuleSettings.isFullNumberFormatEnabled(prefs)) return@intercept result
-                val model = chain.getArg(0) ?: return@intercept result
-                applyWhenReady(
-                    fragment = chain.thisObject,
-                    values = listOf(
-                        NumberValue(listOf("following_count", "dynamic_count"), listOf("动态"), HostAccess.getLong(model, "dynamic")),
-                        NumberValue(listOf("attention_count"), listOf("关注"), HostAccess.getLong(model, "following")),
-                        NumberValue(listOf("fans_count", "follower_count"), listOf("粉丝"), HostAccess.getLong(model, "follower")),
-                    ),
-                )
-                result
-            }
-    }
+    @SuppressLint("SetTextI18n")
+    private fun applyMineCountTexts(fragment: Any?, accountMine: Any?) {
+        val root = fragmentView(fragment) ?: return
+        accountMine ?: return
 
-    private fun hookSpaceBind(method: Method) {
-        xposed.hook(method)
-            .setExceptionMode(XposedInterface.ExceptionMode.PASSTHROUGH)
-            .intercept { chain ->
-                val result = chain.proceed()
-                if (!ModuleSettings.isFullNumberFormatEnabled(prefs)) return@intercept result
-                val model = chain.getArg(0) ?: return@intercept result
-                val likesObject = HostAccess.get(model, "likes", "like", "likeInfo")
-                applyWhenReady(
-                    fragment = chain.thisObject,
-                    values = listOf(
-                        NumberValue(
-                            listOf("fans", "fans_count", "follower_count"),
-                            listOf("粉丝"),
-                            HostAccess.getLong(model, "mFollowers", "followers", "fans"),
-                        ),
-                        NumberValue(
-                            listOf("attentions", "attention_count", "following_count"),
-                            listOf("关注"),
-                            HostAccess.getLong(model, "mFollowings", "followings", "attentions"),
-                        ),
-                        NumberValue(
-                            listOf("likes", "like_num", "like_count"),
-                            listOf("获赞", "点赞"),
-                            likesObject?.let { HostAccess.getLong(it, "likeNum", "like_num", "likes") },
-                        ),
-                    ),
-                )
-                result
-            }
-    }
-
-    private fun applyWhenReady(fragment: Any?, values: List<NumberValue>) {
-        val root = resolveRootView(fragment) ?: return
-        applyValues(root, values)
-        APPLY_DELAYS.forEach { delay ->
-            root.postDelayed({
-                if (ModuleSettings.isFullNumberFormatEnabled(prefs)) applyValues(root, values)
-            }, delay)
+        HostAccess.getLong(accountMine, "dynamic")?.let { value ->
+            root.findTextView("following_count")?.text = value.toString()
+        }
+        HostAccess.getLong(accountMine, "following")?.let { value ->
+            root.findTextView("attention_count")?.text = value.toString()
+        }
+        HostAccess.getLong(accountMine, "follower")?.let { value ->
+            root.findTextView("fans_count")?.text = value.toString()
         }
     }
 
-    private fun resolveRootView(target: Any?): View? {
-        if (target is View) return target
-        if (target == null) return null
-        return HostAccess.invoke(target, "getView") as? View
-            ?: HostAccess.get(target, "mView", "view", "rootView", "mRootView") as? View
-    }
+    @SuppressLint("SetTextI18n")
+    private fun applySpaceCountTexts(fragment: Any?, memberCard: Any?) {
+        val root = fragmentView(fragment) ?: return
+        memberCard ?: return
+        val likes = HostAccess.get(memberCard, "likes")
 
-    private fun applyValues(root: View, values: List<NumberValue>) {
-        values.forEach { item ->
-            val value = item.value ?: return@forEach
-            if (!setById(root, item.ids, value)) {
-                setByLabel(root, item.labels, value)
-            }
+        HostAccess.getLong(memberCard, "mFollowers")?.let { value ->
+            root.findTextView("fans")?.text = value.toString()
         }
-    }
-
-    private fun setById(root: View, names: List<String>, value: Long): Boolean {
-        names.forEach { name ->
-            val id = root.resources.getIdentifier(name, "id", root.context.packageName)
-            if (id == 0) return@forEach
-            val target = root.findViewById<View>(id) as? TextView ?: return@forEach
-            target.text = value.toString()
-            return true
+        HostAccess.getLong(memberCard, "mFollowings")?.let { value ->
+            root.findTextView("attentions")?.text = value.toString()
         }
-        return false
+        root.findTextView("likes")?.text = likes?.let {
+            HostAccess.getLong(it, "likeNum")?.toString()
+        } ?: "-"
     }
 
-    private fun setByLabel(root: View, labels: List<String>, value: Long): Boolean {
-        val label = findTextView(root) { text -> labels.any(text::contains) } ?: return false
-        var parent = label.parent as? ViewGroup
-        repeat(3) {
-            val candidate = parent?.descendantTextViews()
-                ?.filter { it !== label }
-                ?.firstOrNull { it.text?.any(Char::isDigit) == true }
-            if (candidate != null) {
-                candidate.text = value.toString()
-                return true
-            }
-            parent = parent?.parent as? ViewGroup
+    private fun fragmentView(fragment: Any?): View? {
+        if (fragment is View) return fragment
+        fragment ?: return null
+        return HostAccess.get(fragment, "view", "mView") as? View
+            ?: HostAccess.invoke(fragment, "getView") as? View
+    }
+
+    private fun resolveReceiver(
+        thisObject: Any?,
+        args: List<Any?>,
+        fragmentClass: Class<*>,
+    ): Any? {
+        if (thisObject != null && fragmentClass.isInstance(thisObject)) {
+            return thisObject
         }
-        return false
+        return args.firstOrNull(fragmentClass::isInstance)
     }
 
-    private fun findTextView(root: View, predicate: (String) -> Boolean): TextView? {
-        if (root is TextView && predicate(root.text?.toString().orEmpty())) return root
-        val group = root as? ViewGroup ?: return null
-        for (index in 0 until group.childCount) {
-            findTextView(group.getChildAt(index), predicate)?.let { return it }
-        }
-        return null
+    private fun View.findTextView(name: String): TextView? {
+        val id = resources.getIdentifier(name, "id", context.packageName)
+        if (id == 0) return null
+        return findViewById(id) as? TextView
     }
-
-    private fun ViewGroup.descendantTextViews(): List<TextView> {
-        val result = mutableListOf<TextView>()
-        for (index in 0 until childCount) {
-            when (val child = getChildAt(index)) {
-                is TextView -> result += child
-                is ViewGroup -> result += child.descendantTextViews()
-            }
-        }
-        return result
-    }
-
-    private fun isMineBind(method: Method, model: Class<*>): Boolean =
-        method.returnType == Void.TYPE &&
-            method.parameterTypes.contentEquals(arrayOf(model, Boolean::class.javaPrimitiveType))
-
-    private fun isSpaceBind(method: Method, model: Class<*>): Boolean =
-        method.returnType == Void.TYPE &&
-            method.parameterTypes.contentEquals(arrayOf(model))
-
-    private data class NumberValue(
-        val ids: List<String>,
-        val labels: List<String>,
-        val value: Long?,
-    )
 
     private companion object {
-        private const val ACCOUNT_MINE_CLASS = "tv.danmaku.bili.ui.main2.api.AccountMine"
-        private const val MEMBER_CARD_CLASS = "com.bilibili.app.authorspace.api.BiliMemberCard"
-        private val MINE_FRAGMENT_CLASSES = listOf(
+        private val MINE_FRAGMENT_CLASSES = arrayOf(
+            "tv.danmaku.p9138bili.p9228ui.main2.p9247mine.HomeUserCenterFragment",
             "tv.danmaku.bili.ui.main2.mine.HomeUserCenterFragment",
-            "tv.danmaku.bilibilihd.ui.main.mine.HdHomeUserCenterFragment",
         )
-        private val SPACE_FRAGMENT_CLASSES = listOf(
+
+        private val SPACE_FRAGMENT_CLASSES = arrayOf(
+            "com.bilibili.p4439app.authorspace.p4444ui.SpaceHeaderFragment2",
             "com.bilibili.app.authorspace.ui.SpaceHeaderFragment2",
         )
-        private val APPLY_DELAYS = longArrayOf(16L, 80L, 200L, 500L, 1000L)
+
+        private val ACCOUNT_MINE_CLASSES = arrayOf(
+            "tv.danmaku.p9138bili.p9228ui.main2.p9245api.AccountMine",
+            "tv.danmaku.bili.ui.main2.api.AccountMine",
+        )
+
+        private val MEMBER_CARD_CLASSES = arrayOf(
+            "com.bilibili.p4439app.authorspace.p4440api.BiliMemberCard",
+            "com.bilibili.app.authorspace.api.BiliMemberCard",
+        )
     }
 }
