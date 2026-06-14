@@ -37,10 +37,17 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
     override fun startHook() {
-        if (!ModuleSettings.isSkipVideoAdEnabled(prefs)) return
-
         val count = hookPlayViewUnite() + hookPlayerCoreService()
         log("startHook: SkipVideoAd, methods=$count")
+        if (isEnabled()) {
+            toast(
+                if (count > 0) {
+                    "\u8df3\u8fc7\u89c6\u9891\u5e7f\u544a\u5df2\u52a0\u8f7d"
+                } else {
+                    "\u8df3\u8fc7\u89c6\u9891\u5e7f\u544a\u672a\u627e\u5230\u64ad\u653e\u5668\u63a5\u53e3"
+                },
+            )
+        }
     }
 
     private fun hookPlayViewUnite(): Int {
@@ -86,6 +93,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     }
 
     private fun updateVideoIdentityFromRequest(req: Any?) {
+        if (!isEnabled()) return
         if (req == null) return
         var nextBvid = req.callMethod("getBvid") as? String ?: ""
         val vod = req.callMethod("getVod") ?: return
@@ -99,6 +107,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     }
 
     private fun updateVideoIdentityFromReply(reply: Any?) {
+        if (!isEnabled()) return
         val playArc = reply?.callMethod("getPlayArc") ?: return
         val aid = playArc.callMethod("getAid").asLong() ?: return
         if (aid == -1L) return
@@ -143,6 +152,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
         methods.forEach { method ->
             runCatching {
                 env.hookAfter(method) { param ->
+                    if (!isEnabled()) return@hookAfter
                     val service = param.thisObject ?: return@hookAfter
                     playerRef = WeakReference(service)
                     if (duration <= 0) {
@@ -178,6 +188,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
         methods.forEach { method ->
             runCatching {
                 env.hookAfter(method) { param ->
+                    if (!isEnabled()) return@hookAfter
                     val service = param.thisObject ?: return@hookAfter
                     playerRef = WeakReference(service)
                     val state = param.args.firstOrNull().asInt() ?: return@hookAfter
@@ -251,6 +262,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
         }
 
     private fun fetchSegmentsIfNeeded() {
+        if (!isEnabled()) return
         val currentBvid = bvid
         val currentCid = cid
         if (currentBvid.isBlank() || currentCid.isBlank()) return
@@ -260,6 +272,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
 
         loadingSegments = true
         segmentsKey = key
+        toast("\u6b63\u5728\u52a0\u8f7d\u5e7f\u544a\u7247\u6bb5")
         Thread {
             var loaded: List<BilibiliSponsorBlock.Segment>? = null
             for (attempt in 0 until 3) {
@@ -270,8 +283,10 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
 
             if (key == videoKey()) {
                 segments = loaded
-                if (loaded == null) {
-                    toast("\u5e7f\u544a\u7247\u6bb5\u6570\u636e\u83b7\u53d6\u5931\u8d25")
+                when {
+                    loaded == null -> toast("\u5e7f\u544a\u7247\u6bb5\u6570\u636e\u83b7\u53d6\u5931\u8d25")
+                    loaded.isEmpty() -> toast("\u672a\u627e\u5230\u5e7f\u544a\u7247\u6bb5")
+                    else -> toast("\u5df2\u52a0\u8f7d ${loaded.size} \u6bb5\u5e7f\u544a\u7247\u6bb5")
                 }
             }
             loadingSegments = false
@@ -285,6 +300,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     private fun videoKey(): String = "$bvid/$cid"
 
     private fun seekTo(position: Int): Boolean {
+        if (!isEnabled()) return false
         val videoDuration = duration
         if (videoDuration > 0 && position > videoDuration) return false
 
@@ -331,6 +347,9 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
             Toast.makeText(env.hostContext, message, Toast.LENGTH_SHORT).show()
         }
     }
+
+    private fun isEnabled(): Boolean =
+        ModuleSettings.isSkipVideoAdEnabled(prefs)
 
     private fun Any?.asInt(): Int? = when (this) {
         is Number -> toInt()

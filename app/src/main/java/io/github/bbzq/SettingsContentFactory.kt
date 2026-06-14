@@ -14,6 +14,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 
 class SettingsContentFactory(
     private val context: Context,
@@ -143,7 +144,7 @@ class SettingsContentFactory(
         return listOf(
             createSwitchRow(
                 "跳过视频广告",
-                "一个简单的跳过视频广告功能，参考 BilibiliSponsorBlock 实现。",
+                "参考 BilibiliSponsorBlock 实现；开启后进入视频会加载广告片段并提示结果。",
                 ModuleSettings.KEY_SKIP_VIDEO_AD_ENABLED,
                 false,
             ),
@@ -298,6 +299,17 @@ class SettingsContentFactory(
             setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
                 if (!refreshing) {
                     prefs.edit().putBoolean(key, isChecked).apply()
+                    if (key == ModuleSettings.KEY_SKIP_VIDEO_AD_ENABLED) {
+                        Toast.makeText(
+                            context,
+                            if (isChecked) {
+                                "已开启，进入视频后会加载广告片段"
+                            } else {
+                                "已关闭跳过视频广告"
+                            },
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
                     if (key == ModuleSettings.KEY_PURIFY_STORY_VIDEO_AD_ENABLED ||
                         key == ModuleSettings.KEY_DISABLE_LONG_PRESS_COPY_ENABLED ||
                         key == ModuleSettings.KEY_CUSTOM_BOTTOM_BAR_ENABLED

@@ -1,6 +1,7 @@
 ﻿package io.github.bbzq
 
 import android.app.Activity
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
@@ -39,6 +40,20 @@ class IntroActivity : Activity() {
             )
             addView(
                 createCard(
+                    "功能开关",
+                    "跳过视频广告位于 BBZQ 设置页的“播放净化”分组；开启后进入视频会提示广告片段加载结果。",
+                ),
+            )
+            addView(
+                createCard(
+                    "打开 BBZQ 设置",
+                    "也可以直接从这里进入设置页调整所有功能开关。",
+                ) {
+                    startActivity(Intent(this@IntroActivity, SettingsActivity::class.java))
+                },
+            )
+            addView(
+                createCard(
                     getString(R.string.intro_launcher_title),
                     getString(R.string.intro_launcher_body),
                 ),
@@ -68,12 +83,17 @@ class IntroActivity : Activity() {
         }
     }
 
-    private fun createCard(title: String, body: String): LinearLayout {
+    private fun createCard(title: String, body: String, onClick: (() -> Unit)? = null): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
             setBackgroundColor(Color.WHITE)
             setPadding(dp(16), dp(16), dp(16), dp(16))
+            if (onClick != null) {
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { onClick() }
+            }
             layoutParams = ViewGroup.MarginLayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
