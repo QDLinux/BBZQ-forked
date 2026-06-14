@@ -6,7 +6,9 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.Window
+import android.view.WindowInsets
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 
 class SettingsActivity : Activity() {
@@ -16,12 +18,14 @@ class SettingsActivity : Activity() {
         super.onCreate(savedInstanceState)
         requestWindowFeature(Window.FEATURE_NO_TITLE)
 
+        val toolbar = createToolbar()
+        val content = SettingsContentFactory(this, prefs).createScrollView()
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.parseColor("#F6F7F8"))
-            addView(createToolbar())
+            addView(toolbar)
             addView(
-                SettingsContentFactory(this@SettingsActivity, prefs).createScrollView(),
+                content,
                 LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -30,6 +34,7 @@ class SettingsActivity : Activity() {
         }
 
         setContentView(root)
+        applyWindowInsets(root, toolbar, content)
     }
 
     private fun createToolbar(): LinearLayout {
@@ -57,6 +62,40 @@ class SettingsActivity : Activity() {
                 setOnClickListener { finish() }
             })
         }
+    }
+
+    private fun applyWindowInsets(
+        root: LinearLayout,
+        toolbar: LinearLayout,
+        content: ScrollView,
+    ) {
+        val toolbarLeft = toolbar.paddingLeft
+        val toolbarTop = toolbar.paddingTop
+        val toolbarRight = toolbar.paddingRight
+        val toolbarBottom = toolbar.paddingBottom
+        val contentLeft = content.paddingLeft
+        val contentTop = content.paddingTop
+        val contentRight = content.paddingRight
+        val contentBottom = content.paddingBottom
+
+        root.setOnApplyWindowInsetsListener { _, insets ->
+            val safeInsets =
+                insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+            toolbar.setPadding(
+                toolbarLeft,
+                toolbarTop + safeInsets.top,
+                toolbarRight,
+                toolbarBottom,
+            )
+            content.setPadding(
+                contentLeft,
+                contentTop,
+                contentRight,
+                contentBottom + safeInsets.bottom,
+            )
+            insets
+        }
+        root.requestApplyInsets()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
