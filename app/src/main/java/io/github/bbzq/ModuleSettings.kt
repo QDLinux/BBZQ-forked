@@ -26,7 +26,6 @@ object ModuleSettings {
     const val KEY_FULL_NUMBER_FORMAT_ENABLED = "full_number_format_enabled"
     const val KEY_UNLOCK_COMMENT_GIF_ENABLED = "unlock_comment_gif_enabled"
     const val KEY_LAST_ACCESS_KEY = "last_access_key"
-    const val KEY_DEXKIT_CACHE_GENERATION = "dexkit_cache_generation"
 
     const val KEY_TARGET_APP_VERSION = "target_app_version"
     const val CACHE_BILI_SETTINGS_ACTIVITY = "cache_settings_activity"
