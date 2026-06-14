@@ -8,6 +8,7 @@ import io.github.bbzq.roaming.hook.FreeCopyHook
 import io.github.bbzq.roaming.hook.RewardAdHook
 import io.github.bbzq.roaming.hook.SettingHook
 import io.github.bbzq.roaming.hook.ShareHook
+import io.github.bbzq.roaming.hook.SkipVideoAdHook
 import io.github.bbzq.roaming.hook.SplashAdHook
 import io.github.bbzq.roaming.hook.StoryPlayerAdHook
 import io.github.libxposed.api.XposedInterface
@@ -47,6 +48,7 @@ object RoamingRuntime {
                 ::FreeCopyHook,
                 ::BottomBarHook,
                 ::StoryPlayerAdHook,
+                ::SkipVideoAdHook,
                 ::RewardAdHook,
             )
         }

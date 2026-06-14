@@ -142,6 +142,12 @@ class SettingsContentFactory(
     private fun playbackRows(): List<View> {
         return listOf(
             createSwitchRow(
+                "跳过视频广告",
+                "一个简单的跳过视频广告功能，参考 BilibiliSponsorBlock 实现。",
+                ModuleSettings.KEY_SKIP_VIDEO_AD_ENABLED,
+                false,
+            ),
+            createSwitchRow(
                 "跳过视频激励广告",
                 "参考 BBZQ 的奖励广告处理逻辑，自动尝试完成视频激励页。",
                 ModuleSettings.KEY_SKIP_REWARD_AD_ENABLED,

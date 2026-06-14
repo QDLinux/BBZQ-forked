@@ -87,4 +87,5 @@ configurations.all {
 
 dependencies {
     compileOnly(libs.libxposed.api)
+    implementation(libs.okhttp)
 }
