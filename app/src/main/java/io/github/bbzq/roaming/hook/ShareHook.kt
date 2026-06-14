@@ -1,5 +1,7 @@
-﻿package io.github.bbzq.roaming.hook
+package io.github.bbzq.roaming.hook
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.net.Uri
 import io.github.bbzq.ModuleSettings
 import io.github.bbzq.roaming.BaseRoamingHook
@@ -7,44 +9,39 @@ import io.github.bbzq.roaming.RoamingEnv
 import io.github.bbzq.roaming.from
 import io.github.bbzq.roaming.getObjectField
 import io.github.bbzq.roaming.hookAfterMethod
+import io.github.bbzq.roaming.hookBefore
 import io.github.bbzq.roaming.setObjectField
 import java.net.HttpURLConnection
 import java.net.URL
 
 class ShareHook(env: RoamingEnv) : BaseRoamingHook(env) {
-    private val contentUrlPattern = Regex("""[\s\S]*(https?://(?:bili2233\.cn|b23\.tv)/\S*)$""")
-
     override fun startHook() {
-        val miniProgramEnabled = prefs.getBoolean(ModuleSettings.KEY_MINI_PROGRAM_ENABLED, false)
-        val purifyShareEnabled = prefs.getBoolean(ModuleSettings.KEY_PURIFY_SHARE_ENABLED, false)
-        if (!miniProgramEnabled && !purifyShareEnabled) return
-
         val shareClickResult = "com.bilibili.lib.sharewrapper.online.api.ShareClickResult".from(classLoader)
-            ?: return
         var count = 0
 
-        if (purifyShareEnabled) {
+        if (shareClickResult != null) {
             count += env.hookAfterMethod(shareClickResult, "getLink") { param ->
                 val link = param.result as? String ?: return@hookAfterMethod
-                if (!link.isShortLink()) return@hookAfterMethod
-                val resolved = Uri.parse(link).buildUpon().query("").build().toString().resolveShortLink()
-                param.thisObject?.setObjectField("link", resolved)
-                param.result = resolved
+                val transformAv = isMiniProgramEnabled()
+                if (!isPurifyShareEnabled() && !transformAv) return@hookAfterMethod
+
+                val purified = purifyLink(link, transformAv)
+                if (purified == link) return@hookAfterMethod
+                param.thisObject?.setObjectField("link", purified)
+                param.result = purified
             }
             count += env.hookAfterMethod(shareClickResult, "getContent") { param ->
                 val content = param.result as? String ?: return@hookAfterMethod
-                val contentUrl = contentUrlPattern.matchEntire(content)?.groups?.get(1)?.value
-                    ?: return@hookAfterMethod
-                val resolved = ((param.thisObject?.getObjectField("link") as? String) ?: contentUrl)
-                    .let { if (it.isShortLink()) it.resolveShortLink() else it }
-                val transformed = content.replace(contentUrl, transformUrl(resolved, miniProgramEnabled))
+                val transformAv = isMiniProgramEnabled()
+                if (!isPurifyShareEnabled() && !transformAv) return@hookAfterMethod
+
+                val transformed = purifyText(content, transformAv)
+                if (transformed == content) return@hookAfterMethod
                 param.thisObject?.setObjectField("content", transformed)
                 param.result = transformed
             }
-        }
-
-        if (miniProgramEnabled) {
             count += env.hookAfterMethod(shareClickResult, "getShareMode") { param ->
+                if (!isMiniProgramEnabled()) return@hookAfterMethod
                 if (param.result != 6 && param.result != 7) return@hookAfterMethod
                 param.result = 0
                 val target = param.thisObject ?: return@hookAfterMethod
@@ -57,9 +54,44 @@ class ShareHook(env: RoamingEnv) : BaseRoamingHook(env) {
                     ?.let { target.setObjectField("content", "$it\n由 BBZQ 分享") }
             }
         }
+        count += hookClipboardFallback()
 
         log("startHook: Share, methods=$count")
     }
+
+    private fun hookClipboardFallback(): Int {
+        val method = ClipboardManager::class.java.getDeclaredMethod("setPrimaryClip", ClipData::class.java)
+        env.hookBefore(method) { param ->
+            val transformAv = isMiniProgramEnabled()
+            if (!isPurifyShareEnabled() && !transformAv) return@hookBefore
+
+            val clip = param.args.firstOrNull() as? ClipData ?: return@hookBefore
+            val text = clip.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()
+                ?: return@hookBefore
+            val purified = purifyText(text, transformAv)
+            if (purified != text) {
+                param.args[0] = ClipData.newPlainText(clip.description.label, purified)
+            }
+        }
+        return 1
+    }
+
+    private fun purifyText(text: String, transformAv: Boolean): String =
+        URL_REGEX.replace(text) { match ->
+            val raw = match.value
+            val suffix = raw.takeLastWhile { it in TRAILING_PUNCTUATION }
+            val url = raw.dropLast(suffix.length)
+            purifyLink(url, transformAv) + suffix
+        }
+
+    private fun purifyLink(url: String, transformAv: Boolean): String =
+        transformUrl(resolveShortLink(url), transformAv)
+
+    private fun isMiniProgramEnabled(): Boolean =
+        prefs.getBoolean(ModuleSettings.KEY_MINI_PROGRAM_ENABLED, false)
+
+    private fun isPurifyShareEnabled(): Boolean =
+        ModuleSettings.isPurifyShareEnabled(prefs)
 
     private fun String.isShortLink(): Boolean =
         startsWith("https://bili2233.cn") ||
@@ -67,53 +99,60 @@ class ShareHook(env: RoamingEnv) : BaseRoamingHook(env) {
             startsWith("https://b23.tv") ||
             startsWith("http://b23.tv")
 
-    private fun String.resolveShortLink(): String {
+    private fun resolveShortLink(url: String): String {
+        if (!url.isShortLink()) return url
+        val requestUrl = runCatching {
+            Uri.parse(url).buildUpon().query(null).fragment(null).build().toString()
+        }.getOrDefault(url)
         return runCatching {
-            val conn = URL(this).openConnection() as HttpURLConnection
+            val conn = URL(requestUrl).openConnection() as HttpURLConnection
             conn.requestMethod = "GET"
             conn.instanceFollowRedirects = false
             conn.connectTimeout = 5000
             conn.readTimeout = 5000
             conn.connect()
-            if (conn.responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
-                conn.responseCode == HttpURLConnection.HTTP_MOVED_PERM
-            ) {
-                conn.getHeaderField("Location") ?: this
-            } else {
-                this
+            when (conn.responseCode) {
+                HttpURLConnection.HTTP_MOVED_TEMP,
+                HttpURLConnection.HTTP_MOVED_PERM,
+                307,
+                308,
+                -> conn.getHeaderField("Location") ?: url
+
+                else -> url
             }
-        }.getOrDefault(this)
+        }.getOrDefault(url)
     }
 
     private fun transformUrl(url: String, transformAv: Boolean): String {
-        val target = Uri.parse(url)
+        val target = runCatching { Uri.parse(url) }.getOrNull() ?: return url
+        val host = target.host.orEmpty()
+        if (!host.endsWith("bilibili.com")) return url
+
         val bv = if (transformAv) {
             target.path?.split("/")?.firstOrNull { it.startsWith("BV") && it.length == 12 }
         } else {
             null
         }
         val av = bv?.let { "av${bv2av(it)}" }
-        val newUrl = target.buildUpon()
+        val newUrl = target.buildUpon().clearQuery().fragment(null)
         if (av != null) {
             newUrl.path(target.path!!.replace(bv, av))
         }
-        val encodedQuery = target.encodedQuery
-        if (encodedQuery != null) {
-            val query = encodedQuery.split("&")
-                .map { it.split("=", limit = 2) }
-                .filter { it.size == 2 }
-                .mapNotNull {
-                    when (it[0]) {
-                        "p", "t" -> "${it[0]}=${it[1]}"
-                        "start_progress" -> "start_progress=${it[1]}&t=${it[1].toLongOrNull()?.div(1000) ?: 0}"
-                        else -> null
+
+        target.encodedQuery
+            ?.split("&")
+            ?.map { it.split("=", limit = 2) }
+            ?.filter { it.size == 2 }
+            ?.forEach {
+                when (it[0]) {
+                    "p", "t" -> newUrl.appendQueryParameter(it[0], it[1])
+                    "start_progress" -> {
+                        newUrl.appendQueryParameter("start_progress", it[1])
+                        newUrl.appendQueryParameter("t", (it[1].toLongOrNull()?.div(1000) ?: 0).toString())
                     }
                 }
-                .joinToString("&", postfix = "&unique_k=2333")
-            newUrl.encodedQuery(query)
-        } else {
-            newUrl.appendQueryParameter("unique_k", "2333")
-        }
+            }
+        newUrl.appendQueryParameter("unique_k", "2333")
         return newUrl.build().toString()
     }
 
@@ -134,5 +173,10 @@ class ShareHook(env: RoamingEnv) : BaseRoamingHook(env) {
         var result = 1L
         repeat(index) { result *= 58L }
         return result
+    }
+
+    private companion object {
+        private val URL_REGEX = Regex("""https?://\S+""")
+        private val TRAILING_PUNCTUATION = setOf(')', ']', '>', ',', '.', ';', '!', '?', '。', '，', '；', '！', '？')
     }
 }
