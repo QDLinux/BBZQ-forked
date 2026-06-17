@@ -163,6 +163,12 @@ class SettingsContentFactory(
                 false,
             ),
             createSwitchRow(
+                "屏蔽视频下方横幅广告",
+                "阻止视频详情页播放器下方横幅广告创建。",
+                ModuleSettings.KEY_BLOCK_VIDEO_DETAIL_BANNER_AD_ENABLED,
+                false,
+            ),
+            createSwitchRow(
                 "跳过视频激励广告",
                 "参考 BBZQ 的奖励广告处理逻辑，自动尝试完成视频激励页。",
                 ModuleSettings.KEY_SKIP_REWARD_AD_ENABLED,
