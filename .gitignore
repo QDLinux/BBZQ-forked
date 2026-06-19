@@ -10,3 +10,5 @@
 /.kotlin
 /.idea/caches
 /.idea/*.xml
+/signing/
+keystore.properties

@@ -1,4 +1,5 @@
-﻿import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 plugins {
     alias(libs.plugins.androidApplication)
     id("org.jetbrains.kotlin.android")
@@ -23,6 +24,35 @@ fun gitOutput(vararg args: String): String? {
 
 val releaseCode = gitOutput("rev-list", "--count", "HEAD")?.toIntOrNull() ?: 1
 val releaseName: String by rootProject
+val signingPropertiesFile = rootProject.file("keystore.properties")
+val signingProperties = Properties().apply {
+    if (signingPropertiesFile.isFile) {
+        signingPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+fun signingValue(name: String): String? {
+    val envName = when (name) {
+        "releaseStoreFile" -> "RELEASE_STORE_FILE"
+        "releaseStorePassword" -> "RELEASE_STORE_PASSWORD"
+        "releaseKeyAlias" -> "RELEASE_KEY_ALIAS"
+        "releaseKeyPassword" -> "RELEASE_KEY_PASSWORD"
+        else -> null
+    }
+    return envName?.let { System.getenv(it) }
+        ?.takeIf { it.isNotBlank() }
+        ?: providers.gradleProperty(name).orNull?.takeIf { it.isNotBlank() }
+        ?: signingProperties.getProperty(name)?.takeIf { it.isNotBlank() }
+}
+
+listOf(
+    "releaseStoreFile",
+    "releaseStorePassword",
+    "releaseKeyAlias",
+    "releaseKeyPassword",
+).forEach { name ->
+    signingValue(name)?.let { extensions.extraProperties.set(name, it) }
+}
 
 apksign {
     storeFileProperty = "releaseStoreFile"
