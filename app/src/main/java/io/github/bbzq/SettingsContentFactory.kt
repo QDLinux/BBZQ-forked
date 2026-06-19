@@ -295,15 +295,19 @@ class SettingsContentFactory(
         ) {
             handleVersionRowClick()
         }
-        rows += createInfoRow(
-            "隐藏入口",
-            if (ModuleSettings.isSkipVideoAdSettingsVisible(prefs)) {
-                "空降助手隐藏入口已显示。"
-            } else {
-                "双击上方“版本”即可显示空降助手的隐藏设定入口。"
-            },
-        )
-        if (ModuleSettings.isSkipVideoAdSettingsVisible(prefs)) {
+        val skipVisible = ModuleSettings.isSkipVideoAdSettingsVisible(prefs)
+        val accessKeyVisible = ModuleSettings.isAccessKeySettingsVisible(prefs)
+        if (skipVisible || accessKeyVisible) {
+            rows += createInfoRow(
+                "隐藏功能",
+                buildString {
+                    if (skipVisible) append("空降助手 ")
+                    if (accessKeyVisible) append("AccessKey ")
+                    append("隐藏功能已显示。")
+                }
+            )
+        }
+        if (skipVisible) {
             rows += createClickableInfoRow(
                 "空降助手功能开关",
                 "进入空降助手的主开关与基础说明页。",
@@ -315,6 +319,14 @@ class SettingsContentFactory(
                 "进入 SponsorBlock 分类选择页。",
             ) {
                 openPage(SettingsActivity.PAGE_SKIP_VIDEO_AD_CATEGORY)
+            }
+        }
+        if (accessKeyVisible) {
+            rows += createClickableInfoRow(
+                "获取 AccessKey",
+                "点击尝试获取当前登录账号的 AccessKey。",
+            ) {
+                handleAccessKeyClick()
             }
         }
         return rows
@@ -339,17 +351,55 @@ class SettingsContentFactory(
 
     private fun handleVersionRowClick() {
         val now = SystemClock.elapsedRealtime()
-        val settingsVisible = ModuleSettings.isSkipVideoAdSettingsVisible(prefs)
-        if (!settingsVisible && now - lastVersionTapAt <= DOUBLE_TAP_WINDOW_MS) {
-            prefs.edit().putBoolean(ModuleSettings.KEY_SKIP_VIDEO_AD_SETTINGS_VISIBLE, true).apply()
-            Toast.makeText(context, "已显示空降助手隐藏入口", Toast.LENGTH_SHORT).show()
+        val skipVisible = ModuleSettings.isSkipVideoAdSettingsVisible(prefs)
+        val accessKeyVisible = ModuleSettings.isAccessKeySettingsVisible(prefs)
+        if (!(skipVisible && accessKeyVisible) && now - lastVersionTapAt <= DOUBLE_TAP_WINDOW_MS) {
+            prefs.edit().apply {
+                if (!skipVisible) putBoolean(ModuleSettings.KEY_SKIP_VIDEO_AD_SETTINGS_VISIBLE, true)
+                if (!accessKeyVisible) putBoolean(ModuleSettings.KEY_ACCESS_KEY_SETTINGS_VISIBLE, true)
+            }.apply()
+            Toast.makeText(context, "已显示隐藏入口", Toast.LENGTH_SHORT).show()
             openPage(SettingsActivity.PAGE_ROOT)
             return
         }
         lastVersionTapAt = now
-        if (settingsVisible) {
+        if (skipVisible || accessKeyVisible) {
             showRuntimeEnvironmentDialog()
         }
+    }
+
+    private fun handleAccessKeyClick() {
+        val key = AccessKeyRepository.read(prefs)
+        if (key == null) {
+            AlertDialog.Builder(context)
+                .setTitle("获取失败")
+                .setMessage("尚未获取到 AccessKey。请确保：\n1. 已在 B 站登录账号\n2. 已在 B 站中正常使用（刷几个视频）\n3. 如果还是没有，请清除应用快取重试或反馈 Issue")
+                .setPositiveButton("确定", null)
+                .show()
+            return
+        }
+
+        val content = TextView(context).apply {
+            text = key
+            textSize = 16f
+            typeface = Typeface.MONOSPACE
+            setTextColor(TITLE_COLOR)
+            setTextIsSelectable(true)
+            gravity = Gravity.CENTER
+            setPadding(dp(18), dp(24), dp(18), dp(24))
+        }
+
+        AlertDialog.Builder(context)
+            .setTitle("当前 AccessKey")
+            .setView(content)
+            .setPositiveButton("复制") { _, _ ->
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clip = android.content.ClipData.newPlainText("AccessKey", key)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("确定", null)
+            .show()
     }
 
     private fun createSectionLabel(text: String): TextView {

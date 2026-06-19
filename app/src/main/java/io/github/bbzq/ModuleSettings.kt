@@ -11,6 +11,7 @@ object ModuleSettings {
     const val KEY_SKIP_VIDEO_AD_ENABLED = "skip_video_ad_enabled"
     const val KEY_SKIP_VIDEO_AD_CATEGORIES = "skip_video_ad_categories"
     const val KEY_SKIP_VIDEO_AD_SETTINGS_VISIBLE = "skip_video_ad_settings_visible"
+    const val KEY_ACCESS_KEY_SETTINGS_VISIBLE = "access_key_settings_visible"
     const val KEY_BLOCK_VIDEO_DETAIL_BANNER_AD_ENABLED = "block_video_detail_banner_ad_enabled"
     const val KEY_UNLOCK_VIDEO_FEATURES_ENABLED = "unlock_video_features_enabled"
     const val KEY_AUTO_LIKE_VIDEO_DETAIL_ENABLED = "auto_like_video_detail_enabled"
@@ -99,6 +100,9 @@ object ModuleSettings {
 
     fun isSkipVideoAdSettingsVisible(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(KEY_SKIP_VIDEO_AD_SETTINGS_VISIBLE, false)
+
+    fun isAccessKeySettingsVisible(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(KEY_ACCESS_KEY_SETTINGS_VISIBLE, false)
 
     fun isBlockVideoDetailBannerAdEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(KEY_BLOCK_VIDEO_DETAIL_BANNER_AD_ENABLED, false)
