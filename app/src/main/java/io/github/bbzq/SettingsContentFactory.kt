@@ -217,6 +217,12 @@ class SettingsContentFactory(
                 ModuleSettings.KEY_SKIP_REWARD_AD_ENABLED,
                 false,
             ),
+            createSwitchRow(
+                "自动点赞视频",
+                "进入视频详情页时自动触发点赞（仅在未点赞状态下生效。）",
+                ModuleSettings.KEY_AUTO_LIKE_VIDEO_DETAIL_ENABLED,
+                false,
+            ),
         )
     }
 
