@@ -8,6 +8,7 @@ import android.content.ClipboardManager
 import android.os.Bundle
 import android.widget.TextView
 import io.github.bbzq.ModuleSettings
+import io.github.bbzq.R
 import io.github.bbzq.feats.BaseRoamingHook
 import io.github.bbzq.feats.RoamingEnv
 import io.github.bbzq.feats.hookBefore
@@ -94,9 +95,9 @@ class FreeCopyHook(env: RoamingEnv) : BaseRoamingHook(env) {
             }
 
             val dialog = builder
-                .setTitle("自由复制")
+                .setTitle(R.string.free_copy_title)
                 .setMessage(text)
-                .setPositiveButton("复制原始內容") { _, _ ->
+                .setPositiveButton(R.string.free_copy_original_button) { _, _ ->
                     val clipboard = activity.getSystemService(ClipboardManager::class.java)
                     runWithOriginalCopy {
                         clipboard.setPrimaryClip(clip)

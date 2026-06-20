@@ -1,55 +1,54 @@
 <resources>
+    <!-- 基本資訊 -->
     <string name="app_name">BBZQ</string>
     <string name="settings_title">BBZQ 设置</string>
-    <string name="xposed_description">基于 libxposed API 102 的 BBZQ 模块，提供空降助手，功能增強与组件净化等常用功能。</string>
+    <string name="xposed_description">基于 libxposed API 102 的 BBZQ 模块，提供空降助手、功能增强与组件净化等常用功能。</string>
 
+    <!-- 介紹頁 -->
     <string name="intro_title">BBZQ</string>
     <string name="intro_module_title">模块信息</string>
     <string name="intro_module_body">当前版本：BBZQ %1$s</string>
     <string name="intro_desc_title">模块介绍</string>
-    <string name="intro_desc_body">这是一个面向哔哩哔哩客户端的轻量级 Xposed 模块，提供空降助手，功能增強与组件净化等常用功能。</string>
+    <string name="intro_desc_body">这是一个面向哔哩哔哩客户端的轻量级 Xposed 模块，提供空降助手、功能增强与组件净化等常用功能。</string>
     <string name="intro_entry_title">如何进入设置</string>
     <string name="intro_entry_body">请打开哔哩哔哩，进入 设置 页面后找到 高级设置 即可进入 BBZQ 设置。</string>
     <string name="intro_launcher_title">桌面入口说明</string>
     <string name="intro_launcher_body">桌面图标仅用于展示模块介绍，实际功能开关仍在应用内设置页中调整。</string>
 
+    <!-- 設定入口 -->
     <string name="entry_title">高级设置</string>
     <string name="entry_summary">BBZQ 设置</string>
 
+    <!-- 分组標題 -->
     <string name="account_tools_section_title">账号工具</string>
     <string name="general_features_section_title">通用功能</string>
     <string name="story_filter_section_title">竖屏视频净化</string>
 
+    <!-- 通用提示 -->
     <string name="default_enabled_hint">默认：开启</string>
     <string name="default_disabled_hint">默认：关闭</string>
 
+    <!-- 通用功能 -->
     <string name="skip_splash_ad_title">跳过开屏广告</string>
     <string name="skip_splash_ad_summary">移除启动时的开屏广告，加快进入速度。</string>
-
     <string name="unlock_video_features_title">解锁视频功能</string>
     <string name="unlock_video_features_summary">尝试解锁部分试看限制与会员画质相关能力。</string>
-
     <string name="auto_like_video_detail_title">视频详情页自动点赞</string>
     <string name="auto_like_video_detail_summary">进入视频详情页时自动点击点赞按钮。</string>
-
     <string name="fix_live_quality_url_title">直播画质 URL 修复</string>
     <string name="fix_live_quality_url_summary">修复部分版本直播画质切换异常或 URL 错误的问题。</string>
-
     <string name="skip_mini_game_reward_ad_title">跳过小游戏激励广告</string>
     <string name="skip_mini_game_reward_ad_summary">自动快进或关闭小游戏中的激励视频广告。</string>
-
     <string name="custom_download_thread_title">自定义下载线程</string>
     <string name="custom_download_thread_summary">开启后在下载设置里显示“自定义下载线程”，与原有线程数选项分开。</string>
     <string name="custom_download_concurrency_title">自定义同时缓存数</string>
     <string name="custom_download_concurrency_summary">当前值：%1$d。点击调整自定义模式下的同时缓存数。</string>
     <string name="custom_download_concurrency_dialog_title">自定义同时缓存数</string>
     <string name="custom_download_thread_label">自定义</string>
-
     <string name="block_live_reservation_title">屏蔽直播预约</string>
     <string name="block_live_reservation_summary">移除视频详情页中的直播预约悬浮卡片。</string>
     <string name="block_live_room_qoe_popup_title">屏蔽直播间效果弹窗</string>
     <string name="block_live_room_qoe_popup_summary">移除直播间里的效果打分或体验调研弹窗。</string>
-
     <string name="disable_long_press_copy_title">去除长按复制</string>
     <string name="disable_long_press_copy_summary">禁用评论、动态、视频简介等场景里长按后直接复制到剪贴板的行为，减少误触。</string>
     <string name="enhance_long_press_copy_title">长按自由复制</string>
@@ -61,12 +60,128 @@
     <string name="unlock_comment_gif_title">评论区 GIF 解锁</string>
     <string name="unlock_comment_gif_summary">恢复评论区 GIF 缩略图播放，并移除图片右上角的大会员专属角标。</string>
 
+    <!-- 竪屏視頻 -->
     <string name="purify_story_video_ad_title">净化竖屏视频广告</string>
     <string name="purify_story_video_ad_summary">按标签过滤竖屏视频流中的广告、购物和推广内容。</string>
     <string name="purify_story_video_ad_blocked_count">累计拦截：%1$d</string>
 
+    <!-- 账号工具 -->
     <string name="copy_access_key_title">复制 access_key</string>
     <string name="copy_access_key_summary">复制当前登录账号最近一次捕获到的 access_key。</string>
-    <string name="copy_access_key_not_found">未找到 access_key，请先登录 Bilibili 并触发一次账号相关请求。</string>
+    <string name="copy_access_key_not_found">未找到 access_key，请先登录并触发一次账号相关请求。</string>
     <string name="copy_access_key_success">已复制 access_key 到剪贴板。</string>
+
+    <!-- 空降助手分組 -->
+    <string name="section_skip_video_ad">空降助手</string>
+    <string name="section_thanks">鸣谢</string>
+    <string name="section_category_filter">分类过滤</string>
+
+    <string name="skip_video_ad_entry_shown_summary">入口已显示，请到“关于”分组进入空降助手功能开关和分类设定页。</string>
+    <string name="skip_video_ad_function_title">功能说明</string>
+    <string name="skip_video_ad_function_summary">空降助手会依据社区提交的 SponsorBlock 片段，在播放时自动跳过已启用分类对应的片段；功能默认关闭。</string>
+    <string name="skip_video_ad_enable_title">启用空降助手</string>
+    <string name="skip_video_ad_enable_summary">默认关闭。开启后进入视频会按已勾选分类加载片段，并在命中时自动跳过。</string>
+    <string name="skip_video_ad_category_entry_title">进入分类设定</string>
+    <string name="skip_video_ad_category_entry_summary">选择需要参与自动跳过的 SponsorBlock 分类。</string>
+    <string name="skip_video_ad_category_description_title">分类说明</string>
+    <string name="skip_video_ad_category_description_summary">仅会生效你勾选的分类；如果主开关关闭，这里的分类会保留，但不会生效。</string>
+    <string name="skip_video_ad_category_state_title">当前状态</string>
+    <string name="skip_video_ad_category_state_on">空降助手已开启，可按下方分类调整跳过方式。</string>
+    <string name="skip_video_ad_category_state_off">空降助手当前关闭。你可以先设置分类模式，再回到上一页开启主开关。</string>
+    <string name="skip_video_ad_category_back_title">返回功能开关</string>
+    <string name="skip_video_ad_category_back_summary">回到上一页调整主开关和基础说明。</string>
+    <string name="credits_title">项目鸣谢</string>
+    <string name="credits_summary">空降助手的 API 结构、分类模型与实现思路参考了 hanydd/BilibiliSponsorBlock。点此打开项目主页。</string>
+    <string name="api_docs_title">API 文档</string>
+    <string name="api_docs_summary">点此查看官方 API 说明页。</string>
+
+    <!-- 介面分區 -->
+    <string name="section_share_link">分享与链接</string>
+    <string name="section_copy_enhance">复制增强</string>
+    <string name="section_startup_purify">启动净化</string>
+    <string name="section_download_features">下载功能</string>
+    <string name="section_home_recommend_purify">首页推荐净化</string>
+    <string name="section_ui_customize">界面定制</string>
+    <string name="section_playback_purify">播放净化</string>
+    <string name="section_story_purify">竖屏视频净化</string>
+    <string name="section_about">关于</string>
+
+    <!-- 分享與複製 -->
+    <string name="share_purify_title">净化分享</string>
+    <string name="share_purify_summary">将 b23.tv 等短链还原为普通链接，并保留必要定位参数。</string>
+    <string name="share_mini_program_title">普通链接分享</string>
+    <string name="share_mini_program_summary">不再以小程序方式分享到 QQ 或微信，同时复制分享链接时尽量转换为 av 号。</string>
+    <string name="copy_disable_title">去除长按复制</string>
+    <string name="copy_disable_summary">禁用应用内各场景里长按后直接复制到剪贴板的行为，减少误触。</string>
+    <string name="copy_enhance_title">长按自由复制</string>
+    <string name="copy_enhance_summary">需先开启“去除长按复制”，拦截到复制动作时弹出可自由选择文本的窗口。</string>
+
+    <!-- 啟動與首頁 -->
+    <string name="startup_skip_splash_title">跳过开屏广告</string>
+    <string name="startup_skip_splash_summary">清理启动时的开屏广告响应，减少进入目标应用时的等待。</string>
+    <string name="startup_block_teenagers_title">关闭青少年模式弹窗</string>
+    <string name="startup_block_teenagers_summary">检测到青少年模式提醒弹窗时自动关闭（finish 掉该 Activity）。</string>
+    <string name="home_recommend_ad_title">移除首页推荐广告</string>
+    <string name="home_recommend_ad_summary">过滤首页推荐流中的大横幅、信息流广告和广告推广视频。</string>
+    <string name="home_recommend_picture_title">移除首页推荐图文</string>
+    <string name="home_recommend_picture_summary">过滤首页推荐流中的图文动态卡片。</string>
+    <string name="home_recommend_game_promo_title">移除首页推荐游戏推广</string>
+    <string name="home_recommend_game_promo_summary">过滤首页推荐流中的游戏推广卡片，包括“点我玩玩”这类卡片。</string>
+    <string name="home_recommend_auto_refresh_title">阻止首页推荐自动刷新</string>
+    <string name="home_recommend_auto_refresh_summary">阻止冷启动、长时间后台回到前台或从其他页面返回时自动刷新推荐流，保留手动刷新。</string>
+    <string name="home_recommend_hide_all_title">隐藏整个首页内容</string>
+    <string name="home_recommend_hide_all_summary">只要是首页容器下的子页面，就把其中信息流 RecyclerView 隐藏，适合把 B 站当搜索工具使用。</string>
+    <string name="home_recommend_custom_hide_title">按组件自定义隐藏</string>
+    <string name="home_recommend_custom_hide_summary">像自定义底栏一样，根据实际检测到的首页组件勾选保留；取消勾选后会被隐藏。</string>
+    <string name="home_component_title">首页组件</string>
+    <string name="home_component_unavailable_summary">尚未读取到首页组件数据。请先打开 B 站首页并切换几个子标签，再回到 BBZQ 设置中选择需要隐藏的组件。</string>
+    <string name="home_component_info_summary">勾选代表保留；取消勾选后，当前组件在首页会被隐藏。</string>
+
+    <!-- 底欄 -->
+    <string name="bottom_bar_title">自定义底栏</string>
+    <string name="bottom_bar_summary">隐藏不需要的底栏入口；首次使用需重启 B 站并打开首页后加载底栏数据。</string>
+    <string name="bottom_bar_item_title">底栏项目</string>
+    <string name="bottom_bar_unavailable_summary">尚未读取到底栏数据。开启后重启 B 站并打开首页，再回到 BBZQ 设置中选择需要隐藏的项目。</string>
+    <string name="bottom_bar_info_summary">勾选代表保留在底栏；取消勾选后会被隐藏。</string>
+
+    <!-- 播放 -->
+    <string name="playback_hide_banner_title">屏蔽视频下方横幅广告</string>
+    <string name="playback_hide_banner_summary">阻止视频详情页播放器下方横幅广告创建。</string>
+    <string name="playback_skip_reward_title">跳过视频激励广告</string>
+    <string name="playback_skip_reward_summary">自动尝试完成视频激励并获得奖励。</string>
+    <string name="playback_auto_like_title">自动点赞视频</string>
+    <string name="playback_auto_like_summary">进入视频详情页时自动触发点赞（仅在未点赞状态下生效）。</string>
+
+    <!-- 間接顯示的空降助手說明 -->
+    <string name="story_filter_selected_tags_title">已选标签</string>
+    <string name="story_filter_selected_tags_summary">勾选后会一起参与过滤。</string>
+    <string name="story_filter_blocked_count_title">拦截统计</string>
+    <string name="story_filter_blocked_count_summary">累计拦截 %1$d 条内容</string>
+
+    <!-- 關於頁 -->
+    <string name="about_version_title">版本</string>
+    <string name="about_hidden_features_title">隐藏功能</string>
+    <string name="about_hidden_features_summary">%1$s 隐藏功能已显示。</string>
+    <string name="about_skip_video_ad_switch_title">空降助手功能开关</string>
+    <string name="about_skip_video_ad_switch_summary">进入空降助手的主开关与基础说明页。</string>
+    <string name="about_skip_video_ad_category_title">空降助手分类设定</string>
+    <string name="about_skip_video_ad_category_summary">进入 SponsorBlock 分类选择页。</string>
+    <string name="about_access_key_title">获取 AccessKey</string>
+    <string name="about_access_key_summary">点击尝试获取当前登录账号的 AccessKey。</string>
+
+    <!-- 對話框 / Toast -->
+    <string name="version_hidden_entry_toast">已显示隐藏入口</string>
+    <string name="access_key_error_title">获取失败</string>
+    <string name="access_key_error_message">尚未获取到 AccessKey。请确保：\n1. 已在 B 站登录账号\n2. 已在 B 站中正常使用（刷几个视频）\n3. 如果还是没有，请清除应用缓存重试或反馈 Issue</string>
+    <string name="access_key_title">当前 AccessKey</string>
+    <string name="access_key_copy_button">复制</string>
+    <string name="access_key_copied_toast">已复制到剪贴板</string>
+    <string name="runtime_environment_ok">确定</string>
+    <string name="open_url_failed_toast">无法打开链接</string>
+    <string name="skip_mode_dialog_title">%1$s - 跳过</string>
+    <string name="skip_mode_cancel">取消</string>
+    <string name="skip_mode_confirm">确定</string>
+    <string name="free_copy_title">自由复制</string>
+    <string name="free_copy_original_button">复制原始内容</string>
+
 </resources>

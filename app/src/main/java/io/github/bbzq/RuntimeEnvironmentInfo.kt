@@ -24,7 +24,13 @@ object RuntimeEnvironmentInfo {
     fun versionSummary(context: Context, prefs: SharedPreferences): String {
         val host = resolveHostVersion(context, prefs)
         val module = moduleVersion(context)
-        return "宿主 ${host.displayName}   模块 ${module.displayName}"
+        return buildString {
+            append("APP ")
+            append(host.displayName)
+            append('\n')
+            append("Module ")
+            append(module.displayName)
+        }
     }
 
     fun runtimeEnvironmentJson(context: Context, prefs: SharedPreferences): String {

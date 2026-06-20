@@ -21,6 +21,7 @@ import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import io.github.bbzq.R
 
 class SettingsContentFactory(
     private val context: Context,
@@ -54,45 +55,45 @@ class SettingsContentFactory(
 
         when (page) {
             SettingsActivity.PAGE_SKIP_VIDEO_AD_SWITCH -> {
-                pageRoot.addView(createSectionLabel("空降助手"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_skip_video_ad)))
                 pageRoot.addView(createSectionCard(skipVideoAdOverviewRows()))
-                pageRoot.addView(createSectionLabel("鸣谢"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_thanks)))
                 pageRoot.addView(createSectionCard(skipVideoAdCreditRows()))
             }
 
             SettingsActivity.PAGE_SKIP_VIDEO_AD_CATEGORY -> {
-                pageRoot.addView(createSectionLabel("分类过滤"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_category_filter)))
                 pageRoot.addView(createSectionCard(skipVideoAdCategoryRows()))
-                pageRoot.addView(createSectionLabel("鸣谢"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_thanks)))
                 pageRoot.addView(createSectionCard(skipVideoAdCreditRows()))
             }
 
             else -> {
-                pageRoot.addView(createSectionLabel("分享与链接"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_share_link)))
                 pageRoot.addView(createSectionCard(shareRows()))
 
-                pageRoot.addView(createSectionLabel("复制增强"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_copy_enhance)))
                 pageRoot.addView(createSectionCard(copyRows()))
 
-                pageRoot.addView(createSectionLabel("启动净化"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_startup_purify)))
                 pageRoot.addView(createSectionCard(startupRows()))
 
-                pageRoot.addView(createSectionLabel("下载功能"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_download_features)))
                 pageRoot.addView(createSectionCard(downloadRows()))
 
-                pageRoot.addView(createSectionLabel("首页推荐净化"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_home_recommend_purify)))
                 pageRoot.addView(createSectionCard(homeRecommendRows()))
 
-                pageRoot.addView(createSectionLabel("界面定制"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_ui_customize)))
                 pageRoot.addView(createSectionCard(bottomBarRows()))
 
-                pageRoot.addView(createSectionLabel("播放净化"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_playback_purify)))
                 pageRoot.addView(createSectionCard(playbackRows()))
 
-                pageRoot.addView(createSectionLabel("竖屏视频净化"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_story_purify)))
                 pageRoot.addView(createSectionCard(storyRows()))
 
-                pageRoot.addView(createSectionLabel("关于"))
+                pageRoot.addView(createSectionLabel(context.getString(R.string.section_about)))
                 pageRoot.addView(createSectionCard(aboutRows()))
             }
         }
@@ -113,14 +114,14 @@ class SettingsContentFactory(
     private fun shareRows(): List<View> {
         return listOf(
             createSwitchRow(
-                "净化分享",
-                "将 b23.tv / bili2233.cn 短链还原为普通链接，并保留必要定位参数。",
+                context.getString(R.string.share_purify_title),
+                context.getString(R.string.share_purify_summary),
                 ModuleSettings.KEY_PURIFY_SHARE_ENABLED,
                 false,
             ),
             createSwitchRow(
-                "普通链接分享",
-                "不再以小程序方式分享到 QQ 或微信，同时复制分享链接时尽量转换为 av 号。",
+                context.getString(R.string.share_mini_program_title),
+                context.getString(R.string.share_mini_program_summary),
                 ModuleSettings.KEY_MINI_PROGRAM_ENABLED,
                 false,
             ),
@@ -130,16 +131,16 @@ class SettingsContentFactory(
     private fun copyRows(): List<View> {
         return listOf(
             createSwitchRow(
-                "去除长按复制",
-                "禁用应用内各场景里长按后直接复制到剪贴板的行为，减少误触。",
+                context.getString(R.string.copy_disable_title),
+                context.getString(R.string.copy_disable_summary),
                 ModuleSettings.KEY_DISABLE_LONG_PRESS_COPY_ENABLED,
                 false,
             ) {
                 disableLongPressCopySwitch = it
             },
             createSwitchRow(
-                "长按自由复制",
-                "需先开启“去除长按复制”，拦截到复制动作时弹出可自由选择文本的窗口。",
+                context.getString(R.string.copy_enhance_title),
+                context.getString(R.string.copy_enhance_summary),
                 ModuleSettings.KEY_ENHANCE_LONG_PRESS_COPY_ENABLED,
                 false,
             ) {
@@ -151,14 +152,14 @@ class SettingsContentFactory(
     private fun startupRows(): List<View> {
         return listOf(
             createSwitchRow(
-                "跳过开屏广告",
-                "清理启动时的开屏广告响应，减少进入目标应用时的等待。",
+                context.getString(R.string.startup_skip_splash_title),
+                context.getString(R.string.startup_skip_splash_summary),
                 ModuleSettings.KEY_SKIP_SPLASH_AD_ENABLED,
                 true,
             ),
             createSwitchRow(
-                "关闭青少年模式弹窗",
-                "检测到青少年模式提醒弹窗时自动关闭（finish 掉该 Activity）。",
+                context.getString(R.string.startup_block_teenagers_title),
+                context.getString(R.string.startup_block_teenagers_summary),
                 ModuleSettings.KEY_BLOCK_TEENAGERS_MODE_DIALOG_ENABLED,
                 false,
             ),
@@ -193,40 +194,40 @@ class SettingsContentFactory(
     private fun homeRecommendRows(): List<View> {
         val rows = mutableListOf<View>()
         rows += createSwitchRow(
-            "移除首页推荐广告",
-            "过滤首页推荐流中的大横幅、信息流广告和广告推广视频。",
+            context.getString(R.string.home_recommend_ad_title),
+            context.getString(R.string.home_recommend_ad_summary),
             ModuleSettings.KEY_PURIFY_HOME_RECOMMEND_AD_ENABLED,
             false,
         )
         rows += createSwitchRow(
-            "移除首页推荐图文",
-            "过滤首页推荐流中的图文动态卡片。",
+            context.getString(R.string.home_recommend_picture_title),
+            context.getString(R.string.home_recommend_picture_summary),
             ModuleSettings.KEY_PURIFY_HOME_RECOMMEND_PICTURE_ENABLED,
             false,
         )
         rows += createSwitchRow(
-            "移除首页推荐游戏推广",
-            "过滤首页推荐流中的游戏推广卡片，包括“点我玩玩”这类卡片。",
+            context.getString(R.string.home_recommend_game_promo_title),
+            context.getString(R.string.home_recommend_game_promo_summary),
             ModuleSettings.KEY_PURIFY_HOME_RECOMMEND_GAME_PROMO_ENABLED,
             false,
         )
         rows += createSwitchRow(
-            "阻止首页推荐自动刷新",
-            "阻止冷启动、长时间后台回到前台或从其他页面返回时自动刷新推荐流，保留手动刷新。",
+            context.getString(R.string.home_recommend_auto_refresh_title),
+            context.getString(R.string.home_recommend_auto_refresh_summary),
             ModuleSettings.KEY_BLOCK_HOME_RECOMMEND_AUTO_REFRESH_ENABLED,
             false,
         )
         rows += createSwitchRow(
-            "隐藏整个首页内容",
-            "只要是首页容器下的子页面，就把其中信息流 RecyclerView 隐藏，适合把 B 站当搜索工具使用。",
+            context.getString(R.string.home_recommend_hide_all_title),
+            context.getString(R.string.home_recommend_hide_all_summary),
             ModuleSettings.KEY_HIDE_ALL_HOME_COMPONENTS_ENABLED,
             false,
         ) {
             hideAllHomeComponentsSwitch = it
         }
         rows += createSwitchRow(
-            "按组件自定义隐藏",
-            "像自定义底栏一样，根据实际检测到的首页组件勾选保留；取消勾选后会被隐藏。",
+            context.getString(R.string.home_recommend_custom_hide_title),
+            context.getString(R.string.home_recommend_custom_hide_summary),
             ModuleSettings.KEY_CUSTOM_HOME_COMPONENT_HIDE_ENABLED,
             false,
         ) {
@@ -236,11 +237,14 @@ class SettingsContentFactory(
         val components = homeComponentItems()
         if (components.isEmpty()) {
             rows += createInfoRow(
-                "首页组件",
-                "尚未读取到首页组件数据。请先打开 B 站首页并切换几个子标签，再回到 BBZQ 设置中选择需要隐藏的组件。",
+                context.getString(R.string.home_component_title),
+                context.getString(R.string.home_component_unavailable_summary),
             )
         } else {
-            rows += createInfoRow("首页组件", "勾选代表保留；取消勾选后，当前组件在首页会被隐藏。")
+            rows += createInfoRow(
+                context.getString(R.string.home_component_title),
+                context.getString(R.string.home_component_info_summary),
+            )
             rows += createHomeComponentGroup(components)
         }
         return rows
@@ -249,8 +253,8 @@ class SettingsContentFactory(
     private fun bottomBarRows(): List<View> {
         val rows = mutableListOf<View>()
         rows += createSwitchRow(
-            "自定义底栏",
-            "隐藏不需要的底栏入口；首次使用需重启B站并打开首页后加载底栏数据。",
+            context.getString(R.string.bottom_bar_title),
+            context.getString(R.string.bottom_bar_summary),
             ModuleSettings.KEY_CUSTOM_BOTTOM_BAR_ENABLED,
             false,
         ) {
@@ -260,11 +264,14 @@ class SettingsContentFactory(
         val items = bottomBarItems()
         if (items.isEmpty()) {
             rows += createInfoRow(
-                "底栏项目",
-                "尚未读取到底栏数据。开启后重启B站并打开首页，再回到 BBZQ 设置中选择需要隐藏的项目。",
+                context.getString(R.string.bottom_bar_item_title),
+                context.getString(R.string.bottom_bar_unavailable_summary),
             )
         } else {
-            rows += createInfoRow("底栏项目", "勾选代表保留在底栏；取消勾选后会被隐藏。")
+            rows += createInfoRow(
+                context.getString(R.string.bottom_bar_item_title),
+                context.getString(R.string.bottom_bar_info_summary),
+            )
             rows += createBottomBarItemGroup(items)
         }
         return rows
@@ -274,25 +281,25 @@ class SettingsContentFactory(
         val rows = mutableListOf<View>()
         if (ModuleSettings.isSkipVideoAdSettingsVisible(prefs)) {
             rows += createInfoRow(
-                "空降助手",
-                "入口已显示，请到“关于”分组进入空降助手功能开关和分类设定页。"
+                context.getString(R.string.section_skip_video_ad),
+                context.getString(R.string.skip_video_ad_entry_shown_summary),
             )
         }
         rows += createSwitchRow(
-            "屏蔽视频下方横幅广告",
-            "阻止视频详情页播放器下方横幅广告创建。",
+            context.getString(R.string.playback_hide_banner_title),
+            context.getString(R.string.playback_hide_banner_summary),
             ModuleSettings.KEY_BLOCK_VIDEO_DETAIL_BANNER_AD_ENABLED,
             false,
         )
         rows += createSwitchRow(
-            "跳过视频激励广告",
-            "自动尝试完成视频激励並获得奖励。",
+            context.getString(R.string.playback_skip_reward_title),
+            context.getString(R.string.playback_skip_reward_summary),
             ModuleSettings.KEY_SKIP_REWARD_AD_ENABLED,
             false,
         )
         rows += createSwitchRow(
-            "自动点赞视频",
-            "进入视频详情页时自动触发点赞（仅在未点赞状态下生效）。",
+            context.getString(R.string.playback_auto_like_title),
+            context.getString(R.string.playback_auto_like_summary),
             ModuleSettings.KEY_AUTO_LIKE_VIDEO_DETAIL_ENABLED,
             false,
         )
@@ -302,18 +309,18 @@ class SettingsContentFactory(
     private fun skipVideoAdOverviewRows(): List<View> {
         return listOf(
             createInfoRow(
-                "功能说明",
-                "空降助手会依据社区提交的 SponsorBlock 片段，在播放时自动跳过已启用分类对应的片段；功能默认关闭。",
+                context.getString(R.string.skip_video_ad_function_title),
+                context.getString(R.string.skip_video_ad_function_summary),
             ),
             createSwitchRow(
-                "启用空降助手",
-                "默认关闭。开启后进入视频会按已勾选分类加载片段，并在命中时自动跳过。",
+                context.getString(R.string.skip_video_ad_enable_title),
+                context.getString(R.string.skip_video_ad_enable_summary),
                 ModuleSettings.KEY_SKIP_VIDEO_AD_ENABLED,
                 false,
             ),
             createClickableInfoRow(
-                "进入分类设定",
-                "选择需要参与自动跳过的 SponsorBlock 分类。",
+                context.getString(R.string.skip_video_ad_category_entry_title),
+                context.getString(R.string.skip_video_ad_category_entry_summary),
             ) {
                 openPage(SettingsActivity.PAGE_SKIP_VIDEO_AD_CATEGORY)
             },
@@ -323,21 +330,21 @@ class SettingsContentFactory(
     private fun skipVideoAdCategoryRows(): List<View> {
         val rows = mutableListOf<View>()
         rows += createInfoRow(
-            "分类说明",
-            "仅会生效你勾选的分类；如果主开关关闭，这里的分类会保留，但不会生效。"
+            context.getString(R.string.skip_video_ad_category_description_title),
+            context.getString(R.string.skip_video_ad_category_description_summary),
         )
         rows += createInfoRow(
-            "当前状态",
+            context.getString(R.string.skip_video_ad_category_state_title),
             if (ModuleSettings.isSkipVideoAdEnabled(prefs)) {
-                "空降助手已开启，可按下方分类调整跳过方式。"
+                context.getString(R.string.skip_video_ad_category_state_on)
             } else {
-                "空降助手当前关闭。你可以先设置分类模式，再回到上一页开启主开关。"
+                context.getString(R.string.skip_video_ad_category_state_off)
             },
         )
         rows += createSponsorBlockCategoryGroup()
         rows += createClickableInfoRow(
-            "返回功能开关",
-            "回到上一页调整主开关和基础说明。",
+            context.getString(R.string.skip_video_ad_category_back_title),
+            context.getString(R.string.skip_video_ad_category_back_summary),
         ) {
             openPage(SettingsActivity.PAGE_SKIP_VIDEO_AD_SWITCH)
         }
@@ -347,14 +354,17 @@ class SettingsContentFactory(
     private fun storyRows(): List<View> {
         val rows = mutableListOf<View>()
         rows += createSwitchRow(
-            "净化竖屏视频广告",
-            "按标签过滤竖屏视频流中的广告、购物和推广内容。",
+            context.getString(R.string.purify_story_video_ad_title),
+            context.getString(R.string.purify_story_video_ad_summary),
             ModuleSettings.KEY_PURIFY_STORY_VIDEO_AD_ENABLED,
             false,
         ) {
             storyVideoAdSwitch = it
         }
-        rows += createInfoRow("已选标签", "勾选后会一起参与过滤。")
+        rows += createInfoRow(
+            context.getString(R.string.story_filter_selected_tags_title),
+            context.getString(R.string.story_filter_selected_tags_summary),
+        )
         rows += createTagGroup()
         rows += createBlockedCountRow()
         return rows
@@ -363,7 +373,7 @@ class SettingsContentFactory(
     private fun aboutRows(): List<View> {
         val rows = mutableListOf<View>()
         rows += createClickableInfoRow(
-            "版本",
+            context.getString(R.string.about_version_title),
             RuntimeEnvironmentInfo.versionSummary(context, prefs),
         ) {
             handleVersionRowClick()
@@ -372,32 +382,32 @@ class SettingsContentFactory(
         val accessKeyVisible = ModuleSettings.isAccessKeySettingsVisible(prefs)
         if (skipVisible || accessKeyVisible) {
             rows += createInfoRow(
-                "隐藏功能",
+                context.getString(R.string.about_hidden_features_title),
                 buildString {
-                    if (skipVisible) append("空降助手 ")
-                    if (accessKeyVisible) append("AccessKey ")
-                    append("隐藏功能已显示。")
+                    if (skipVisible) append(context.getString(R.string.section_skip_video_ad)).append(' ')
+                    if (accessKeyVisible) append("AccessKey").append(' ')
+                    append(context.getString(R.string.about_hidden_features_summary, ""))
                 }
             )
         }
         if (skipVisible) {
             rows += createClickableInfoRow(
-                "空降助手功能开关",
-                "进入空降助手的主开关与基础说明页。",
+                context.getString(R.string.about_skip_video_ad_switch_title),
+                context.getString(R.string.about_skip_video_ad_switch_summary),
             ) {
                 openPage(SettingsActivity.PAGE_SKIP_VIDEO_AD_SWITCH)
             }
             rows += createClickableInfoRow(
-                "空降助手分类设定",
-                "进入 SponsorBlock 分类选择页。",
+                context.getString(R.string.about_skip_video_ad_category_title),
+                context.getString(R.string.about_skip_video_ad_category_summary),
             ) {
                 openPage(SettingsActivity.PAGE_SKIP_VIDEO_AD_CATEGORY)
             }
         }
         if (accessKeyVisible) {
             rows += createClickableInfoRow(
-                "获取 AccessKey",
-                "点击尝试获取当前登录账号的 AccessKey。",
+                context.getString(R.string.about_access_key_title),
+                context.getString(R.string.about_access_key_summary),
             ) {
                 handleAccessKeyClick()
             }
@@ -408,14 +418,14 @@ class SettingsContentFactory(
     private fun skipVideoAdCreditRows(): List<View> {
         return listOf(
             createClickableInfoRow(
-                "项目鸣谢",
-                "空降助手的 API 结构、分类模型与实现思路参考了 hanydd/BilibiliSponsorBlock。点此打开项目主页。",
+                context.getString(R.string.credits_title),
+                context.getString(R.string.credits_summary),
             ) {
                 openUrl("https://github.com/hanydd/BilibiliSponsorBlock")
             },
             createClickableInfoRow(
-                "API 文档",
-                "点此查看官方 API 说明页。",
+                context.getString(R.string.api_docs_title),
+                context.getString(R.string.api_docs_summary),
             ) {
                 openUrl("https://github.com/hanydd/BilibiliSponsorBlock/wiki/API")
             },
@@ -431,7 +441,7 @@ class SettingsContentFactory(
                 if (!skipVisible) putBoolean(ModuleSettings.KEY_SKIP_VIDEO_AD_SETTINGS_VISIBLE, true)
                 if (!accessKeyVisible) putBoolean(ModuleSettings.KEY_ACCESS_KEY_SETTINGS_VISIBLE, true)
             }.apply()
-            Toast.makeText(context, "已显示隐藏入口", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.version_hidden_entry_toast), Toast.LENGTH_SHORT).show()
             openPage(SettingsActivity.PAGE_ROOT)
             return
         }
@@ -445,9 +455,9 @@ class SettingsContentFactory(
         val key = AccessKeyRepository.read(prefs)
         if (key == null) {
             AlertDialog.Builder(context)
-                .setTitle("获取失败")
-                .setMessage("尚未获取到 AccessKey。请确保：\n1. 已在 B 站登录账号\n2. 已在 B 站中正常使用（刷几个视频）\n3. 如果还是没有，请清除应用快取重试或反馈 Issue")
-                .setPositiveButton("确定", null)
+                .setTitle(R.string.access_key_error_title)
+                .setMessage(R.string.access_key_error_message)
+                .setPositiveButton(R.string.runtime_environment_ok, null)
                 .show()
             return
         }
@@ -463,15 +473,15 @@ class SettingsContentFactory(
         }
 
         AlertDialog.Builder(context)
-            .setTitle("当前 AccessKey")
+            .setTitle(R.string.access_key_title)
             .setView(content)
-            .setPositiveButton("复制") { _, _ ->
+            .setPositiveButton(R.string.access_key_copy_button) { _, _ ->
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                 val clip = android.content.ClipData.newPlainText("AccessKey", key)
                 clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.access_key_copied_toast), Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("确定", null)
+            .setNegativeButton(R.string.runtime_environment_ok, null)
             .show()
     }
 
@@ -485,8 +495,8 @@ class SettingsContentFactory(
         AlertDialog.Builder(context)
             .setTitle(R.string.custom_download_concurrency_dialog_title)
             .setView(picker)
-            .setNegativeButton("取消", null)
-            .setPositiveButton("确定") { _, _ ->
+            .setNegativeButton(R.string.skip_mode_cancel, null)
+            .setPositiveButton(R.string.skip_mode_confirm) { _, _ ->
                 prefs.edit()
                     .putInt(ModuleSettings.KEY_CUSTOM_DOWNLOAD_CONCURRENCY, picker.value)
                     .apply()
@@ -569,7 +579,7 @@ class SettingsContentFactory(
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
             addView(TextView(context).apply {
-                text = "拦截统计"
+                text = context.getString(R.string.story_filter_blocked_count_title)
                 textSize = 15f
                 setTextColor(TITLE_COLOR)
             })
@@ -635,7 +645,7 @@ class SettingsContentFactory(
         val labels = modes.map { it.label }.toTypedArray()
 
         AlertDialog.Builder(context)
-            .setTitle("${category.label} - 跳过")
+            .setTitle(context.getString(R.string.skip_mode_dialog_title, category.label))
             .setSingleChoiceItems(labels, currentMode.ordinal) { dialog, which ->
                 val selectedMode = modes[which]
                 prefs.edit()
@@ -647,7 +657,7 @@ class SettingsContentFactory(
                 refresh()
                 dialog.dismiss()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(R.string.skip_mode_cancel, null)
             .show()
     }
 
@@ -841,7 +851,10 @@ class SettingsContentFactory(
 
         if (::blockedCountView.isInitialized) {
             blockedCountView.text =
-                "累计拦截 ${prefs.getInt(ModuleSettings.KEY_PURIFY_STORY_VIDEO_AD_BLOCKED_COUNT, 0)} 条内容"
+                context.getString(
+                    R.string.story_filter_blocked_count_summary,
+                    prefs.getInt(ModuleSettings.KEY_PURIFY_STORY_VIDEO_AD_BLOCKED_COUNT, 0),
+                )
         }
         refreshing = false
     }
@@ -894,7 +907,7 @@ class SettingsContentFactory(
         AlertDialog.Builder(context)
             .setTitle("runtimeEnvironment")
             .setView(scroll)
-            .setPositiveButton("确定", null)
+            .setPositiveButton(R.string.runtime_environment_ok, null)
             .show()
     }
 
@@ -935,7 +948,7 @@ class SettingsContentFactory(
         }
         runCatching { context.startActivity(intent) }
             .onFailure {
-                Toast.makeText(context, "无法打开链接", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.open_url_failed_toast), Toast.LENGTH_SHORT).show()
             }
     }
 
