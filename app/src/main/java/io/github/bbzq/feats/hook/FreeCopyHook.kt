@@ -21,14 +21,11 @@ class FreeCopyHook(env: RoamingEnv) : BaseRoamingHook(env) {
         val method = ClipboardManager::class.java.getDeclaredMethod("setPrimaryClip", ClipData::class.java)
         env.hookBefore(method) { param ->
             if (!isRemoveDirectCopyEnabled()) return@hookBefore
-            if (allowOriginalCopy.get() == true || isSelectableTextCopy()) return@hookBefore
+            if (allowOriginalCopy.get() == true) return@hookBefore
 
             val clip = param.args.firstOrNull() as? ClipData ?: return@hookBefore
-            val text = clip.takeIf { it.itemCount > 0 }
-                ?.getItemAt(0)
-                ?.coerceToText(env.hostContext)
-                ?.takeIf { it.isNotBlank() }
-                ?: return@hookBefore
+            val text = extractText(clip) ?: return@hookBefore
+            if (shouldBypassCopy(text)) return@hookBefore
 
             if (isEnhancedCopyEnabled()) {
                 showCopyDialog(text, clip)
@@ -72,10 +69,24 @@ class FreeCopyHook(env: RoamingEnv) : BaseRoamingHook(env) {
     private fun isEnhancedCopyEnabled(): Boolean =
         isRemoveDirectCopyEnabled() && ModuleSettings.isEnhanceLongPressCopyEnabled(prefs)
 
-    private fun isSelectableTextCopy(): Boolean =
-        Throwable().stackTrace.any {
-            it.className == TextView::class.java.name && it.methodName == "setPrimaryClip"
-        }
+    private fun extractText(clip: ClipData): CharSequence? =
+        clip.takeIf { it.itemCount > 0 }
+            ?.getItemAt(0)
+            ?.coerceToText(env.hostContext)
+            ?.takeIf { it.isNotBlank() }
+
+    private fun shouldBypassCopy(text: CharSequence): Boolean {
+        val value = text.toString().trim()
+        if (value.matches(BV_ID_REGEX)) return true
+        if (isLikelyShareText(value)) return true
+
+        val stackTrace = Throwable().stackTrace
+        return stackTrace.any { it.isShareCopyFrame() || it.isModuleOwnCopyFrame() }
+    }
+
+    private fun isLikelyShareText(value: String): Boolean =
+        (value.startsWith("http://") || value.startsWith("https://")) &&
+            SHARE_LINK_HOSTS.any { value.contains(it, ignoreCase = true) }
 
     private fun showCopyDialog(text: CharSequence, clip: ClipData) {
         val activity = topActivity?.get()
@@ -122,9 +133,20 @@ class FreeCopyHook(env: RoamingEnv) : BaseRoamingHook(env) {
     private companion object {
         private val callbacksRegistered = AtomicBoolean(false)
         private val allowOriginalCopy = ThreadLocal<Boolean>()
+        private val BV_ID_REGEX = Regex("""BV[a-zA-Z0-9]{10}""")
+        private val SHARE_LINK_HOSTS = listOf("bilibili.com", "b23.tv", "bili2233.cn")
 
         @Volatile
         private var topActivity: WeakReference<Activity>? = null
+
+        private fun StackTraceElement.isShareCopyFrame(): Boolean =
+            className.contains(".share.", ignoreCase = true) ||
+                className.contains("sharewrapper", ignoreCase = true) ||
+                className.contains("p7848copy", ignoreCase = true)
+
+        private fun StackTraceElement.isModuleOwnCopyFrame(): Boolean =
+            className.startsWith("io.github.bbzq.SettingsContentFactory") ||
+                className.startsWith("io.github.bbzq.SettingsActivity")
     }
 }
 
