@@ -32,6 +32,7 @@ class SettingsContentFactory(
 ) {
     private val tagCheckBoxes = mutableMapOf<String, CheckBox>()
     private val bottomBarItemCheckBoxes = mutableMapOf<String, CheckBox>()
+    private val homeRecommendItemCheckBoxes = mutableMapOf<String, CheckBox>()
     private val homeComponentCheckBoxes = mutableMapOf<String, CheckBox>()
     private val sponsorBlockCategoryButtons = mutableMapOf<String, Button>()
     private lateinit var disableLongPressCopySwitch: Switch
@@ -40,6 +41,7 @@ class SettingsContentFactory(
     private lateinit var downloadConcurrencyRow: View
     private lateinit var downloadConcurrencySummary: TextView
     private lateinit var bottomBarSwitch: Switch
+    private lateinit var homeRecommendItemSwitch: Switch
     private lateinit var hideAllHomeComponentsSwitch: Switch
     private lateinit var customHomeComponentHideSwitch: Switch
     private lateinit var storyVideoAdSwitch: Switch
@@ -224,6 +226,28 @@ class SettingsContentFactory(
             ModuleSettings.KEY_BLOCK_HOME_RECOMMEND_AUTO_REFRESH_ENABLED,
             false,
         )
+        rows += createSwitchRow(
+            context.getString(R.string.home_recommend_custom_filter_title),
+            context.getString(R.string.home_recommend_custom_filter_summary),
+            ModuleSettings.KEY_CUSTOM_HOME_RECOMMEND_FILTER_ENABLED,
+            false,
+        ) {
+            homeRecommendItemSwitch = it
+        }
+
+        val recommendItems = homeRecommendItems()
+        if (recommendItems.isEmpty()) {
+            rows += createInfoRow(
+                context.getString(R.string.home_recommend_custom_filter_item_title),
+                context.getString(R.string.home_recommend_custom_filter_unavailable_summary),
+            )
+        } else {
+            rows += createInfoRow(
+                context.getString(R.string.home_recommend_custom_filter_item_title),
+                context.getString(R.string.home_recommend_custom_filter_info_summary),
+            )
+            rows += createHomeRecommendItemGroup(recommendItems)
+        }
         rows += createSwitchRow(
             context.getString(R.string.home_recommend_hide_all_title),
             context.getString(R.string.home_recommend_hide_all_summary),
@@ -814,6 +838,29 @@ class SettingsContentFactory(
         }
     }
 
+    private fun createHomeRecommendItemGroup(items: List<HomeRecommendItem>): View {
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            items.forEach { item ->
+                addView(CheckBox(context).apply {
+                    text = if (item.bizType.isBlank()) {
+                        "${item.key}\n${item.className}"
+                    } else {
+                        "${item.key}\n${item.bizType}\n${item.className}"
+                    }
+                    textSize = 14f
+                    setTextColor(TITLE_COLOR)
+                    setPadding(dp(6), dp(2), dp(6), dp(2))
+                    setOnCheckedChangeListener { _, _ ->
+                        if (!refreshing) saveHiddenHomeRecommendItems()
+                    }
+                    homeRecommendItemCheckBoxes[item.key] = this
+                })
+            }
+        }
+    }
+
     private fun createHomeComponentGroup(items: List<HomeComponentItem>): View {
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -848,6 +895,7 @@ class SettingsContentFactory(
                     if (key == ModuleSettings.KEY_PURIFY_STORY_VIDEO_AD_ENABLED ||
                         key == ModuleSettings.KEY_DISABLE_LONG_PRESS_COPY_ENABLED ||
                         key == ModuleSettings.KEY_CUSTOM_BOTTOM_BAR_ENABLED ||
+                        key == ModuleSettings.KEY_CUSTOM_HOME_RECOMMEND_FILTER_ENABLED ||
                         key == ModuleSettings.KEY_SKIP_VIDEO_AD_ENABLED ||
                         key == ModuleSettings.KEY_HIDE_ALL_HOME_COMPONENTS_ENABLED ||
                         key == ModuleSettings.KEY_CUSTOM_HOME_COMPONENT_HIDE_ENABLED
@@ -903,6 +951,8 @@ class SettingsContentFactory(
         val copyEnhanceEnabled = copyBaseEnabled && ModuleSettings.isEnhanceLongPressCopyEnabled(prefs)
         val bottomBarEnabled = ModuleSettings.isCustomBottomBarEnabled(prefs)
         val hiddenBottomBarItems = ModuleSettings.getHiddenBottomBarItems(prefs)
+        val homeRecommendFilterEnabled = ModuleSettings.isCustomHomeRecommendFilterEnabled(prefs)
+        val hiddenHomeRecommendItems = ModuleSettings.getHiddenHomeRecommendItems(prefs)
         val hideAllHomeComponentsEnabled = ModuleSettings.isHideAllHomeComponentsEnabled(prefs)
         val customHomeComponentHideEnabled = ModuleSettings.isCustomHomeComponentHideEnabled(prefs)
         val hiddenHomeComponents = ModuleSettings.getHiddenHomeComponents(prefs)
@@ -940,6 +990,13 @@ class SettingsContentFactory(
         bottomBarItemCheckBoxes.forEach { (id, checkBox) ->
             checkBox.isEnabled = bottomBarEnabled
             checkBox.isChecked = id !in hiddenBottomBarItems
+        }
+        if (::homeRecommendItemSwitch.isInitialized) {
+            homeRecommendItemSwitch.isChecked = homeRecommendFilterEnabled
+        }
+        homeRecommendItemCheckBoxes.forEach { (key, checkBox) ->
+            checkBox.isEnabled = homeRecommendFilterEnabled
+            checkBox.isChecked = key !in hiddenHomeRecommendItems
         }
         if (::hideAllHomeComponentsSwitch.isInitialized) {
             hideAllHomeComponentsSwitch.isChecked = hideAllHomeComponentsEnabled
@@ -992,6 +1049,15 @@ class SettingsContentFactory(
             .apply()
     }
 
+    private fun saveHiddenHomeRecommendItems() {
+        prefs.edit()
+            .putStringSet(
+                ModuleSettings.KEY_HIDDEN_HOME_RECOMMEND_ITEMS,
+                hiddenHomeRecommendItemKeys().toMutableSet(),
+            )
+            .apply()
+    }
+
     private fun saveHiddenHomeComponents() {
         prefs.edit()
             .putStringSet(ModuleSettings.KEY_HIDDEN_HOME_COMPONENTS, hiddenHomeComponentClassNames().toMutableSet())
@@ -1003,6 +1069,9 @@ class SettingsContentFactory(
 
     private fun hiddenBottomBarItemIds(): Set<String> =
         bottomBarItemCheckBoxes.filterValues { !it.isChecked }.keys.toSet()
+
+    private fun hiddenHomeRecommendItemKeys(): Set<String> =
+        homeRecommendItemCheckBoxes.filterValues { !it.isChecked }.keys.toSet()
 
     private fun hiddenHomeComponentClassNames(): Set<String> =
         homeComponentCheckBoxes.filterValues { !it.isChecked }.keys.toSet()
@@ -1038,6 +1107,12 @@ class SettingsContentFactory(
             .distinctBy(BottomBarItem::id)
             .sortedBy(BottomBarItem::order)
 
+    private fun homeRecommendItems(): List<HomeRecommendItem> =
+        ModuleSettings.getKnownHomeRecommendItems(prefs)
+            .mapNotNull(::parseHomeRecommendItem)
+            .distinctBy(HomeRecommendItem::key)
+            .sortedWith(compareBy<HomeRecommendItem> { it.order }.thenBy { it.key }.thenBy { it.className })
+
     private fun homeComponentItems(): List<HomeComponentItem> =
         ModuleSettings.getKnownHomeComponents(prefs)
             .mapNotNull(::parseHomeComponentItem)
@@ -1054,6 +1129,13 @@ class SettingsContentFactory(
             return BottomBarItem(Int.MAX_VALUE, parts[0], parts[1], parts[2])
         }
         return null
+    }
+
+    private fun parseHomeRecommendItem(raw: String): HomeRecommendItem? {
+        val parts = raw.split('\t', limit = 4)
+        if (parts.size != 4) return null
+        val order = parts[0].toIntOrNull() ?: return null
+        return HomeRecommendItem(order, parts[1], parts[2], parts[3])
     }
 
     private fun parseHomeComponentItem(raw: String): HomeComponentItem? {
@@ -1080,6 +1162,13 @@ class SettingsContentFactory(
         val id: String,
         val name: String,
         val uri: String,
+    )
+
+    private data class HomeRecommendItem(
+        val order: Int,
+        val key: String,
+        val bizType: String,
+        val className: String,
     )
 
     private data class HomeComponentItem(
