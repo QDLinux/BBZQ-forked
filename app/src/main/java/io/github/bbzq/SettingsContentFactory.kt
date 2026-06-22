@@ -45,6 +45,7 @@ class SettingsContentFactory(
     private lateinit var hideAllHomeComponentsSwitch: Switch
     private lateinit var customHomeComponentHideSwitch: Switch
     private lateinit var storyVideoAdSwitch: Switch
+    private lateinit var skipVideoAdAutoLikeSwitch: Switch
     private lateinit var blockedCountView: TextView
     private var lastVersionTapAt = 0L
     private var refreshing = false
@@ -455,6 +456,14 @@ class SettingsContentFactory(
                 ModuleSettings.KEY_SKIP_VIDEO_AD_ENABLED,
                 false,
             ),
+            createSwitchRow(
+                context.getString(R.string.skip_video_ad_auto_like_title),
+                context.getString(R.string.skip_video_ad_auto_like_summary),
+                ModuleSettings.KEY_SKIP_VIDEO_AD_AUTO_LIKE_ENABLED,
+                false,
+            ) {
+                skipVideoAdAutoLikeSwitch = it
+            },
             createClickableInfoRow(
                 context.getString(R.string.skip_video_ad_category_entry_title),
                 context.getString(R.string.skip_video_ad_category_entry_summary),
@@ -909,25 +918,7 @@ class SettingsContentFactory(
             isChecked = prefs.getBoolean(key, defaultValue)
             setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
                 if (!refreshing) {
-                    prefs.edit().putBoolean(key, isChecked).apply()
-                    if (key == ModuleSettings.KEY_PURIFY_STORY_VIDEO_AD_ENABLED ||
-                        key == ModuleSettings.KEY_DISABLE_LONG_PRESS_COPY_ENABLED ||
-                        key == ModuleSettings.KEY_CUSTOM_BOTTOM_BAR_ENABLED ||
-                        key == ModuleSettings.KEY_CUSTOM_HOME_RECOMMEND_FILTER_ENABLED ||
-                        key == ModuleSettings.KEY_SKIP_VIDEO_AD_ENABLED ||
-                        key == ModuleSettings.KEY_HIDE_ALL_HOME_COMPONENTS_ENABLED ||
-                        key == ModuleSettings.KEY_CUSTOM_HOME_COMPONENT_HIDE_ENABLED
-                    ) {
-                        refresh()
-                    }
-                    if (key == ModuleSettings.KEY_HIDE_DESKTOP_ICON) {
-                        if (isChecked) {
-                            DesktopIconHelper.applySetting(context, true)
-                        } else {
-                            DesktopIconHelper.applySetting(context, false)
-                            Toast.makeText(context, "恢复图标需重启手机后生效", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                    handleSwitchChanged(key, isChecked)
                 }
             }
         }
@@ -939,6 +930,47 @@ class SettingsContentFactory(
             setPadding(dp(16), dp(14), dp(16), dp(14))
             addView(createTextColumn(title, summary), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(switchView)
+        }
+    }
+
+    private fun handleSwitchChanged(key: String, isChecked: Boolean) {
+        val editor = prefs.edit().putBoolean(key, isChecked)
+        if (key == ModuleSettings.KEY_SKIP_VIDEO_AD_ENABLED && isChecked) {
+            editor.putBoolean(ModuleSettings.KEY_SKIP_VIDEO_AD_AUTO_LIKE_ENABLED, true)
+        }
+        editor.apply()
+
+        if (isSkipVideoAdSwitchKey(key)) {
+            ModuleSettings.refreshSkipVideoAdCache(prefs)
+        }
+        if (key == ModuleSettings.KEY_SKIP_VIDEO_AD_AUTO_LIKE_ENABLED && !isChecked) {
+            showSkipVideoAdAutoLikeDisableDialog()
+        }
+        if (shouldRefreshAfterSwitchChanged(key)) {
+            refresh()
+        }
+        if (key == ModuleSettings.KEY_HIDE_DESKTOP_ICON) {
+            applyDesktopIconSetting(isChecked)
+        }
+    }
+
+    private fun isSkipVideoAdSwitchKey(key: String): Boolean =
+        key == ModuleSettings.KEY_SKIP_VIDEO_AD_ENABLED ||
+            key == ModuleSettings.KEY_SKIP_VIDEO_AD_AUTO_LIKE_ENABLED
+
+    private fun shouldRefreshAfterSwitchChanged(key: String): Boolean =
+        key == ModuleSettings.KEY_PURIFY_STORY_VIDEO_AD_ENABLED ||
+            key == ModuleSettings.KEY_DISABLE_LONG_PRESS_COPY_ENABLED ||
+            key == ModuleSettings.KEY_CUSTOM_BOTTOM_BAR_ENABLED ||
+            key == ModuleSettings.KEY_CUSTOM_HOME_RECOMMEND_FILTER_ENABLED ||
+            key == ModuleSettings.KEY_SKIP_VIDEO_AD_ENABLED ||
+            key == ModuleSettings.KEY_HIDE_ALL_HOME_COMPONENTS_ENABLED ||
+            key == ModuleSettings.KEY_CUSTOM_HOME_COMPONENT_HIDE_ENABLED
+
+    private fun applyDesktopIconSetting(isChecked: Boolean) {
+        DesktopIconHelper.applySetting(context, isChecked)
+        if (!isChecked) {
+            Toast.makeText(context, "恢复图标需重启手机后生效", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -960,6 +992,32 @@ class SettingsContentFactory(
         }
     }
 
+    private fun showSkipVideoAdAutoLikeDisableDialog() {
+        val dialog = AlertDialog.Builder(context)
+            .setTitle(context.getString(R.string.skip_video_ad_auto_like_disable_dialog_title))
+            .setMessage(context.getString(R.string.skip_video_ad_auto_like_disable_dialog_message))
+            .setNegativeButton(R.string.skip_video_ad_auto_like_disable_dialog_confirm, null)
+            .setPositiveButton(R.string.skip_video_ad_auto_like_disable_dialog_cancel) { _, _ ->
+                restoreSkipVideoAdAutoLikeEnabled()
+            }
+            .setOnCancelListener {
+                restoreSkipVideoAdAutoLikeEnabled()
+            }
+            .show()
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(DISABLE_CONFIRM_COLOR)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(CANCEL_ACTION_COLOR)
+    }
+
+    private fun restoreSkipVideoAdAutoLikeEnabled() {
+        prefs.edit().putBoolean(ModuleSettings.KEY_SKIP_VIDEO_AD_AUTO_LIKE_ENABLED, true).apply()
+        ModuleSettings.refreshSkipVideoAdCache(prefs)
+        if (::skipVideoAdAutoLikeSwitch.isInitialized) {
+            refreshing = true
+            skipVideoAdAutoLikeSwitch.isChecked = true
+            refreshing = false
+        }
+    }
+
     private fun refresh() {
         refreshing = true
 
@@ -975,6 +1033,7 @@ class SettingsContentFactory(
         val customHomeComponentHideEnabled = ModuleSettings.isCustomHomeComponentHideEnabled(prefs)
         val hiddenHomeComponents = ModuleSettings.getHiddenHomeComponents(prefs)
         val sponsorBlockEnabled = ModuleSettings.isSkipVideoAdEnabled(prefs)
+        val skipVideoAdAutoLikeEnabled = ModuleSettings.isSkipVideoAdAutoLikeEnabled(prefs)
 
         if (!copyBaseEnabled && prefs.getBoolean(ModuleSettings.KEY_ENHANCE_LONG_PRESS_COPY_ENABLED, false)) {
             prefs.edit().putBoolean(ModuleSettings.KEY_ENHANCE_LONG_PRESS_COPY_ENABLED, false).apply()
@@ -1031,6 +1090,9 @@ class SettingsContentFactory(
 
         if (::storyVideoAdSwitch.isInitialized) {
             storyVideoAdSwitch.isChecked = storyEnabled
+        }
+        if (::skipVideoAdAutoLikeSwitch.isInitialized) {
+            skipVideoAdAutoLikeSwitch.isChecked = skipVideoAdAutoLikeEnabled
         }
         tagCheckBoxes.forEach { (key, checkBox) ->
             checkBox.isEnabled = storyEnabled
@@ -1199,6 +1261,8 @@ class SettingsContentFactory(
         private val PAGE_BACKGROUND = Color.parseColor("#F6F7F8")
         private val TITLE_COLOR = Color.parseColor("#18191C")
         private val SUMMARY_COLOR = Color.parseColor("#9499A0")
+        private val DISABLE_CONFIRM_COLOR = Color.parseColor("#F6B000")
+        private val CANCEL_ACTION_COLOR = Color.parseColor("#00A1D6")
         private const val DOUBLE_TAP_WINDOW_MS = 400L
     }
 }

@@ -80,6 +80,10 @@
     <string name="skip_video_ad_function_summary">基于 SponsorBlock 数据，根据勾选的分类自动跳过视频片段；功能默认关闭。</string>
     <string name="skip_video_ad_enable_title">启用空降助手</string>
     <string name="skip_video_ad_enable_summary">开启后将根据所选分类自动处理视频片段。</string>
+    <string name="skip_video_ad_auto_like_title">跳过后自动点赞</string>
+    <string name="skip_video_ad_auto_like_summary">自动跳过或手动点击跳过提示后自动点赞。</string>
+    <string name="skip_video_ad_auto_like_disable_dialog_title">注意</string>
+    <string name="skip_video_ad_auto_like_disable_dialog_message">空降助手跳过功能可能需要向视频点赞才能正常运行＞﹏＜</string>
     <string name="skip_video_ad_category_entry_title">进入分类设定</string>
     <string name="skip_video_ad_category_entry_summary">选择需要参与自动跳过的分类标签。</string>
     <string name="skip_video_ad_category_description_title">分类说明</string>
@@ -224,4 +228,6 @@
     <string name="mine_remove_vip_summary">移除“我的”页面中的大会员卡片展示。</string>
     <string name="mine_keep_vip_space_title">保留大会员占位空间</string>
     <string name="mine_keep_vip_space_summary">隐藏大会员入口时保留其占位空间，避免页面跳动。</string>
+    <string name="skip_video_ad_auto_like_disable_dialog_confirm">仍然关闭</string>
+    <string name="skip_video_ad_auto_like_disable_dialog_cancel">取消</string>
 </resources>

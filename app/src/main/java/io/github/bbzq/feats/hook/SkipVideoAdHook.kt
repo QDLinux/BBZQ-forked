@@ -38,6 +38,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     @Volatile private var playbackKey = ""
     private val autoSkippedSegments = ConcurrentHashMap.newKeySet<String>()
     private val manualNotifiedSegments = ConcurrentHashMap.newKeySet<String>()
+    private val pendingAutoLikeVideos = ConcurrentHashMap.newKeySet<String>()
 
     private var waitTime = CHECK_INTERVAL_MS
     private var playerCoreServiceRef: WeakReference<Any>? = null
@@ -51,8 +52,9 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
     override fun startHook() {
-        ModuleSettings.refreshSkipVideoAdCache(prefs)
-        if (!isEnabled()) return
+        val config = ModuleSettings.refreshSkipVideoAdCache(prefs)
+        if (!config.enabled) return
+        SkipVideoAdAutoLike.install(env)
         ensureActivityTracking()
         observeBoundControllers()
         val count = installHookGroup("playView") { hookPlayViewUnite() } +
@@ -436,7 +438,11 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
                         val autoKey = "$segmentKey:auto"
                         if (!autoSkippedSegments.add(autoKey)) return false
                         seekPlayerTo(seekTarget, segment, controller).also { skipped ->
-                            if (!skipped) autoSkippedSegments.remove(autoKey)
+                            if (skipped) {
+                                requestAutoLikeAfterSkip(state?.key ?: key)
+                            } else {
+                                autoSkippedSegments.remove(autoKey)
+                            }
                         }
                     }
                     SkipVideoAdMode.MANUAL_SKIP -> {
@@ -576,7 +582,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
                 }
                 setOnClickListener {
                     removeFromParent(this)
-                    seekPlayerTo(position, segment, controller)
+                    skipFromManualPrompt(position, segment, controller)
                 }
             }
 
@@ -616,7 +622,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
                 }
                 setOnClickListener {
                     removeFromParent(prompt)
-                    seekPlayerTo(position, segment, controller)
+                    skipFromManualPrompt(position, segment, controller)
                 }
             }
 
@@ -643,6 +649,63 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
             }, MANUAL_PROMPT_DURATION_MS)
         }
     }
+
+    private fun skipFromManualPrompt(
+        position: Long,
+        segment: BilibiliSponsorBlock.Segment,
+        controller: Any?,
+    ) {
+        if (seekPlayerTo(position, segment, controller)) {
+            val key = SkipVideoAdState.keyForController(controller) ?: videoKey()
+            requestAutoLikeAfterSkip(key)
+        }
+    }
+
+    private fun requestAutoLikeAfterSkip(key: String) {
+        if (!ModuleSettings.getSkipVideoAdCache(prefs).autoLikeEnabled) return
+        val videoLikeKey = autoLikeKey(key) ?: return
+        if (!pendingAutoLikeVideos.add(videoLikeKey)) return
+
+        mainHandler.postDelayed({
+            attemptAutoLike(videoLikeKey, 1)
+        }, AUTO_LIKE_DELAY_MS)
+    }
+
+    private fun attemptAutoLike(videoLikeKey: String, attempt: Int) {
+        if (!ModuleSettings.getSkipVideoAdCache(prefs).autoLikeEnabled) {
+            pendingAutoLikeVideos.remove(videoLikeKey)
+            return
+        }
+
+        when (SkipVideoAdAutoLike.likeCurrentVideo(::log)) {
+            SkipVideoAdAutoLike.AutoLikeResult.PERFORMED -> {
+                log("SkipVideoAd auto-liked current video")
+                pendingAutoLikeVideos.remove(videoLikeKey)
+            }
+            SkipVideoAdAutoLike.AutoLikeResult.ALREADY_LIKED -> {
+                pendingAutoLikeVideos.remove(videoLikeKey)
+            }
+            SkipVideoAdAutoLike.AutoLikeResult.NO_CANDIDATE -> {
+                if (attempt >= AUTO_LIKE_MAX_ATTEMPTS) {
+                    log("SkipVideoAd auto-like found no ready like action")
+                    pendingAutoLikeVideos.remove(videoLikeKey)
+                } else {
+                    mainHandler.postDelayed({
+                        attemptAutoLike(videoLikeKey, attempt + 1)
+                    }, AUTO_LIKE_RETRY_DELAY_MS)
+                }
+            }
+        }
+    }
+
+    private fun autoLikeKey(key: String): String? =
+        key.ifBlank { videoKey() }
+            .ifBlank {
+                listOf(bvid, cid)
+                    .filter { it.isNotBlank() }
+                    .joinToString(":")
+            }
+            .ifBlank { null }
 
     private fun removeFromParent(view: View) {
         (view.parent as? ViewGroup)?.removeView(view)
@@ -732,6 +795,9 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
         private const val AUTO_SKIP_REARM_THRESHOLD_MS = 1200L
         private const val SKIP_COOLDOWN_MS = 1000L
         private const val MANUAL_PROMPT_DURATION_MS = 7000L
+        private const val AUTO_LIKE_DELAY_MS = 400L
+        private const val AUTO_LIKE_RETRY_DELAY_MS = 350L
+        private const val AUTO_LIKE_MAX_ATTEMPTS = 5
         private const val MANUAL_PROMPT_BOTTOM_MARGIN_DP = 92
         private const val STORY_MANUAL_PROMPT_BOTTOM_MARGIN_DP = 216
         private const val MANUAL_PROMPT_TAG = "bbzq_skip_video_ad_manual_prompt"

@@ -33,8 +33,11 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
 
     private fun getAllFromSources(): SettingsSource {
         val remote = getAllFromRemotePreferences()
-        if (remote.isNotEmpty()) return SettingsSource(remote, authoritative = true)
         val provider = getAllFromProvider()
+        if (remote.isNotEmpty() && provider.isNotEmpty()) {
+            return SettingsSource(remote + provider, authoritative = true)
+        }
+        if (remote.isNotEmpty()) return SettingsSource(remote, authoritative = true)
         if (provider.isNotEmpty()) return SettingsSource(provider, authoritative = true)
         return SettingsSource(fallbackDefaults(), authoritative = false)
     }

@@ -10,6 +10,7 @@ object ModuleSettings {
     const val KEY_BLOCK_TEENAGERS_MODE_DIALOG_ENABLED = "block_teenagers_mode_dialog"
     const val KEY_SKIP_SPLASH_AD_ENABLED = "skip_splash_ad_enabled"
     const val KEY_SKIP_VIDEO_AD_ENABLED = "skip_video_ad_enabled"
+    const val KEY_SKIP_VIDEO_AD_AUTO_LIKE_ENABLED = "skip_video_ad_auto_like_enabled"
     const val KEY_SKIP_VIDEO_AD_CATEGORIES = "skip_video_ad_categories"
     const val KEY_SKIP_VIDEO_AD_MODE_PREFIX = "skip_video_ad_mode_"
     const val KEY_SKIP_VIDEO_AD_SETTINGS_VISIBLE = "skip_video_ad_settings_visible"
@@ -141,6 +142,7 @@ object ModuleSettings {
     fun refreshSkipVideoAdCache(prefs: SharedPreferences): SkipVideoAdCache =
         SkipVideoAdCache(
             enabled = prefs.getBoolean(KEY_SKIP_VIDEO_AD_ENABLED, false),
+            autoLikeEnabled = prefs.getBoolean(KEY_SKIP_VIDEO_AD_AUTO_LIKE_ENABLED, false),
             modes = buildMap {
                 val legacyCategories = prefs.getStringSet(KEY_SKIP_VIDEO_AD_CATEGORIES, null)
                 skipVideoAdCategories.forEach { category ->
@@ -156,6 +158,9 @@ object ModuleSettings {
 
     fun isSkipVideoAdEnabledCached(prefs: SharedPreferences): Boolean =
         getSkipVideoAdCache(prefs).enabled
+
+    fun isSkipVideoAdAutoLikeEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(KEY_SKIP_VIDEO_AD_AUTO_LIKE_ENABLED, false)
 
     fun getSkipVideoAdMode(prefs: SharedPreferences, category: String): SkipVideoAdMode =
         resolveSkipVideoAdMode(prefs, category)
@@ -395,6 +400,7 @@ data class SponsorBlockCategory(
 
 data class SkipVideoAdCache(
     val enabled: Boolean,
+    val autoLikeEnabled: Boolean,
     val modes: Map<String, SkipVideoAdMode>,
 ) {
     val enabledCategories: Set<String> = modes
