@@ -4,36 +4,27 @@ import android.app.Activity
 import io.github.bbzq.ModuleSettings
 import io.github.bbzq.feats.BaseRoamingHook
 import io.github.bbzq.feats.RoamingEnv
-import io.github.bbzq.feats.from
-import io.github.bbzq.feats.hookAfterMethod
+import io.github.bbzq.feats.hookAfter
 
 class TeenagersModeHook(env: RoamingEnv) : BaseRoamingHook(env) {
     override fun startHook() {
         if (!ModuleSettings.isBlockTeenagersModeDialogEnabled(prefs)) return
 
-        val count = TARGET_ACTIVITIES.sumOf { name ->
-            val activityClass = name.from(classLoader) ?: return@sumOf 0
-            env.hookAfterMethod(activityClass, "onCreate", android.os.Bundle::class.java) { param ->
-                val activity = param.thisObject as? Activity ?: return@hookAfterMethod
+        val methods = env.symbols?.teenagersMode?.restore(classLoader)?.onCreateMethods.orEmpty()
+        var count = 0
+        methods.forEach { method ->
+            env.hookAfter(method) { param ->
+                val activity = param.thisObject as? Activity ?: return@hookAfter
                 activity.finish()
                 log("Teenagers mode dialog has been closed: ${activity.javaClass.name}")
             }
+            count++
         }
         if (count > 0) {
             log("TeenagersModeHook installed, methods=$count")
         } else {
             log("TeenagersModeHook: Activity not found")
         }
-    }
-
-    private companion object {
-        private val TARGET_ACTIVITIES = arrayOf(
-            "com.bilibili.app.preferences.TeenagersModeDialogActivity",
-            "com.bilibili.p4439app.preferences.TeenagersModeDialogActivity",
-            "tv.danmaku.bili.ui.teenagersmode.TeenagersModeDialogActivity",
-            "com.bilibili.teenagersmode.p6010ui.TeenagersModeActivity",
-            "com.bilibili.teenagersmode.osteen.OSTeensParentControlRedirectActivity",
-        )
     }
 }
 

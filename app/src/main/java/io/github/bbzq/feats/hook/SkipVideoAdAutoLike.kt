@@ -25,12 +25,13 @@ internal object SkipVideoAdAutoLike {
     @Volatile private var storyActionOwnerClassName: String? = null
 
     fun install(env: RoamingEnv): Int {
-        if (!installed.compareAndSet(false, true)) return 0
+        if (installed.get()) return 0
         val symbols = env.symbols?.skipVideoAdAutoLike?.restore(env.classLoader)
         if (symbols == null) {
             env.log("SkipVideoAd auto-like skipped because symbols are unavailable")
             return 0
         }
+        if (!installed.compareAndSet(false, true)) return 0
         detailLikeStateOwnerClassName = symbols.detailLikeStateOwnerClass?.name
         storyActionOwnerClassName = symbols.storyActionOwnerClass?.name
         var count = 0

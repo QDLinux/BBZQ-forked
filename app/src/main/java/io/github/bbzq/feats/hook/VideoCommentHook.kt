@@ -7,6 +7,7 @@ import io.github.bbzq.feats.getObjectField
 import io.github.bbzq.feats.hookAfter
 import io.github.bbzq.feats.hookBefore
 import io.github.bbzq.feats.symbol.RestoredVideoCommentSymbols
+import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.util.Collections
 import java.util.IdentityHashMap
@@ -65,8 +66,12 @@ class VideoCommentHook(env: RoamingEnv) : BaseRoamingHook(env) {
             env.hookBefore(method) { param ->
                 runCatching {
                     if (!ModuleSettings.isCommentNoQuickReplyEnabled(prefs)) return@runCatching
-                    val action = param.args.firstOrNull() ?: return@runCatching
-                    if (!action.isPublishDialogAction()) return@runCatching
+                    val action = if (param.args.size >= 2 && param.args[1] == false) {
+                        param.thisObject
+                    } else {
+                        param.args.firstOrNull()
+                    } ?: return@runCatching
+                    if (!action.shouldBlockPublishDialogAction()) return@runCatching
                     param.result = null
                 }.onFailure {
                     log("VideoComment quick reply hook failed at ${method.declaringClass.name}.${method.name}", it)
@@ -251,22 +256,22 @@ class VideoCommentHook(env: RoamingEnv) : BaseRoamingHook(env) {
                 simpleName.contains("Intent", ignoreCase = true))
     }
 
-    private fun Any.isPublishDialogAction(): Boolean {
-        val simpleName = javaClass.simpleName
-        val className = javaClass.name
-        return simpleName.contains("ShowPublishDialog", ignoreCase = true) ||
-            simpleName.contains("PublishDialog", ignoreCase = true) ||
-            className.contains("ShowPublishDialog", ignoreCase = true) ||
-            className.contains("PublishDialogIntent", ignoreCase = true)
-    }
+    private fun Any.shouldBlockPublishDialogAction(): Boolean =
+        resolvePublishDialogIntent()?.shouldBlockQuickReplyDialog() == true
 
     private fun Any.shouldBlockQuickReplyDialog(): Boolean {
         if (!isQuickReplyDialogIntentType()) return false
 
-        val isReply = runCatching { getObjectField("f184778b") as? Boolean }.getOrNull() ?: false
+        val fields = publishDialogIntentFields.getOrPut(javaClass) { resolvePublishDialogIntentFields(javaClass) }
+        val isReply = runCatching { getObjectField("f184778b") as? Boolean }.getOrNull()
+            ?: runCatching { fields.isReply?.get(this) as? Boolean }.getOrNull()
+            ?: false
         if (!isReply) return false
 
         val posName = runCatching { getObjectField("f184787k")?.toString().orEmpty() }.getOrDefault("")
+            .ifBlank {
+                runCatching { fields.pos?.get(this)?.toString().orEmpty() }.getOrDefault("")
+            }
         if (posName.isBlank()) return true
 
         return when {
@@ -288,109 +293,50 @@ class VideoCommentHook(env: RoamingEnv) : BaseRoamingHook(env) {
             className.contains("PublishDialogIntent", ignoreCase = true)
     }
 
+    private fun Any.resolvePublishDialogIntent(): Any? {
+        if (isQuickReplyDialogIntentType()) return this
+        val field = publishDialogActionIntentFields.getOrPut(javaClass) {
+            FieldLookup(
+                javaClass.declaredFields.firstOrNull { field ->
+                    field.type.isQuickReplyDialogIntentType()
+                }?.apply { isAccessible = true },
+            )
+        }.field ?: return null
+        return runCatching { field.get(this) }.getOrNull()
+    }
+
+    private fun Class<*>.isQuickReplyDialogIntentType(): Boolean {
+        val className = name
+        return className.endsWith("PublishDialogIntent", ignoreCase = true) ||
+            className.contains("PublishDialogIntent", ignoreCase = true)
+    }
+
+    private fun resolvePublishDialogIntentFields(type: Class<*>): PublishDialogIntentFields {
+        val fields = type.declaredFields.onEach { it.isAccessible = true }
+        val booleanFields = fields.filter { it.type == Boolean::class.javaPrimitiveType }
+        return PublishDialogIntentFields(
+            isReply = booleanFields.getOrNull(1),
+            pos = fields.firstOrNull { it.type.isEnum && it.type.simpleName == "Pos" },
+        )
+    }
+
     private companion object {
-        private val THESEUS_TAB_PAGER_SERVICE = arrayOf(
-            "com.bilibili.ship.theseus.united.page.tab.TheseusTabPagerService",
-            "com.bilibili.p5797ship.theseus.united.p5850page.p5861tab.TheseusTabPagerService",
-        )
-
-        private val COMMENT_VIEW_MODEL_CLASSES = arrayOf(
-            "com.bilibili.app.comment3.viewmodel.CommentViewModel",
-            "com.bilibili.p4439app.comment3.viewmodel.CommentViewModel",
-        )
-
-        private val QUICK_REPLY_DIALOG_COLLECTOR_CLASSES = arrayOf(
-            "com.bilibili.app.comment3.ui.CommentContainerImpl\$attachRepository\$5",
-            "com.bilibili.p4439app.comment3.p4518ui.CommentContainerImpl\$attachRepository\$5",
-            "com.bilibili.app.comment3.ui.CommentContainerImpl\$attachRepository\$5\$C636262",
-            "com.bilibili.p4439app.comment3.p4518ui.CommentContainerImpl\$attachRepository\$5\$C636262",
-        )
-
-        private val CMT_VOTE_WIDGET_CLASSES = arrayOf(
-            "com.bilibili.app.comment.ext.widgets.CmtVoteWidget",
-            "com.bilibili.p4439app.comment.p4511ext.widgets.CmtVoteWidget",
-        )
-
-        private val CMT_MOUNT_WIDGET_CLASSES = arrayOf(
-            "com.bilibili.app.comment.ext.widgets.CmtMountWidget",
-            "com.bilibili.p4439app.comment.p4511ext.widgets.CmtMountWidget",
-        )
-
-        private val COMMENT_VOTE_VIEW_CLASSES = arrayOf(
-            "com.bilibili.app.comment3.ui.widget.CommentVoteView",
-            "com.bilibili.p4439app.comment3.p4518ui.widget.CommentVoteView",
-        )
-
-        private val COMMENT_FOLLOW_WIDGET_CLASSES = arrayOf(
-            "com.bilibili.app.comm.comment2.phoenix.view.CommentFollowWidget",
-            "com.bilibili.p4439app.p4450comm.comment2.phoenix.p4467view.CommentFollowWidget",
-        )
-
-        private val COMMENT_HEADER_DECORATIVE_VIEW_CLASSES = arrayOf(
-            "com.bilibili.app.comment3.ui.widget.CommentHeaderDecorativeView",
-            "com.bilibili.p4439app.comment3.p4518ui.widget.CommentHeaderDecorativeView",
-        )
-
-        private val COMMENT_CONTENT_CLASSES = arrayOf(
-            "com.bapis.bilibili.main.community.reply.v1.Content",
-            "com.bapis.bilibili.p4311main.community.reply.p4312v1.Content",
-        )
-
-        private val COMMENT_SUBJECT_CONTROL_CLASSES = arrayOf(
-            "com.bapis.bilibili.main.community.reply.v1.SubjectControl",
-            "com.bapis.bilibili.p4311main.community.reply.p4312v1.SubjectControl",
-        )
-
-        private val COMMENT_SUBJECT_DESC_CLASSES = arrayOf(
-            "com.bapis.bilibili.main.community.reply.v2.SubjectDescriptionReply",
-            "com.bapis.bilibili.p4311main.community.reply.p4313v2.SubjectDescriptionReply",
-        )
-
-        private val COMMENT_MAIN_LIST_OBSERVERS = arrayOf(
-            "com.bapis.bilibili.main.community.reply.v1.ReplyMossKtxKt\$suspendMainList\$\$inlined\$suspendCall\$1",
-            "com.bapis.bilibili.main.community.reply.v1.KReplyMoss\$mainList\$\$inlined\$suspendCall\$2",
-            "com.bapis.bilibili.p4311main.community.reply.p4312v1.ReplyMossKtxKt\$suspendMainList\$\$inlined\$suspendCall\$1",
-            "com.bapis.bilibili.p4311main.community.reply.p4312v1.KReplyMoss\$mainList\$\$inlined\$suspendCall\$2",
-        )
-
-        private val QUICK_REPLY_METHOD_NAMES = setOf("dispatchAction", "onAction", "submitAction")
-        private val VOTE_WIDGET_METHOD_NAMES = setOf("setData", "bindData", "update", "refresh", "bind", "onBind")
-        private val FOLLOW_WIDGET_METHOD_NAMES = setOf("setData", "bindData", "update", "refresh", "bind", "onBind")
-        private val HEADER_DECORATIVE_METHOD_NAMES = setOf("setData", "bindData", "update", "refresh", "submitList")
         private val CLEAR_OPERATION_METHOD_NAMES = setOf("clearOperation", "clearOperationV2")
         private val replyCleanupMethods = ConcurrentHashMap<Class<*>, ReplyCleanupMethods>()
+        private val publishDialogActionIntentFields = ConcurrentHashMap<Class<*>, FieldLookup>()
+        private val publishDialogIntentFields = ConcurrentHashMap<Class<*>, PublishDialogIntentFields>()
     }
 }
+
+private data class FieldLookup(val field: Field?)
+
+private data class PublishDialogIntentFields(
+    val isReply: Field?,
+    val pos: Field?,
+)
 
 private data class ReplyCleanupMethods(
     val clearQoe: Method?,
     val clearOperations: List<Method>,
     val getRepliesList: Method?,
 )
-
-private fun Class<*>?.isVoteWidgetPayload(): Boolean {
-    val type = this ?: return false
-    val simpleName = type.simpleName
-    val className = type.name
-    return simpleName.isNotBlank() && (
-        simpleName.contains("Vote", ignoreCase = true) ||
-            simpleName.contains("Reply", ignoreCase = true) ||
-            simpleName.contains("Item", ignoreCase = true) ||
-            simpleName.contains("Data", ignoreCase = true) ||
-            className.contains("vote", ignoreCase = true) ||
-            className.contains("reply", ignoreCase = true)
-        )
-}
-
-private fun Class<*>?.isFollowWidgetPayload(): Boolean {
-    val type = this ?: return false
-    val simpleName = type.simpleName
-    val className = type.name
-    return simpleName.isNotBlank() && (
-        simpleName.contains("Follow", ignoreCase = true) ||
-            simpleName.contains("User", ignoreCase = true) ||
-            simpleName.contains("Item", ignoreCase = true) ||
-            simpleName.contains("Data", ignoreCase = true) ||
-            className.contains("follow", ignoreCase = true)
-        )
-}

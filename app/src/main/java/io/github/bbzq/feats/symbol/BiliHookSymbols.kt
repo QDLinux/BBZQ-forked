@@ -15,6 +15,11 @@ data class BiliHookSymbols(
     val fingerprint: String,
     val hookPoints: List<HookPointStatus>,
     val scanErrors: List<String>,
+    val splashAd: SplashAdSymbols? = null,
+    val share: ShareSymbols? = null,
+    val rewardAd: RewardAdSymbols? = null,
+    val tryFreeQuality: TryFreeQualitySymbols? = null,
+    val teenagersMode: TeenagersModeSymbols? = null,
     val account: AccountSymbols? = null,
     val settings: SettingsSymbols? = null,
     val mineProfile: MineProfileSymbols? = null,
@@ -44,6 +49,11 @@ data class BiliHookSymbols(
         .put("fingerprint", fingerprint)
         .put("hookPoints", hookPoints.toJsonArray { it.toJson() })
         .put("scanErrors", scanErrors.toJsonArray())
+        .putOpt("splashAd", splashAd?.toJson())
+        .putOpt("share", share?.toJson())
+        .putOpt("rewardAd", rewardAd?.toJson())
+        .putOpt("tryFreeQuality", tryFreeQuality?.toJson())
+        .putOpt("teenagersMode", teenagersMode?.toJson())
         .putOpt("account", account?.toJson())
         .putOpt("settings", settings?.toJson())
         .putOpt("mineProfile", mineProfile?.toJson())
@@ -75,6 +85,11 @@ data class BiliHookSymbols(
                     fingerprint = obj.optString("fingerprint"),
                     hookPoints = obj.optJSONArray("hookPoints").toList { HookPointStatus.fromJson(it) },
                     scanErrors = obj.optJSONArray("scanErrors").toStringList(),
+                    splashAd = obj.optJSONObject("splashAd")?.let(SplashAdSymbols::fromJson),
+                    share = obj.optJSONObject("share")?.let(ShareSymbols::fromJson),
+                    rewardAd = obj.optJSONObject("rewardAd")?.let(RewardAdSymbols::fromJson),
+                    tryFreeQuality = obj.optJSONObject("tryFreeQuality")?.let(TryFreeQualitySymbols::fromJson),
+                    teenagersMode = obj.optJSONObject("teenagersMode")?.let(TeenagersModeSymbols::fromJson),
                     account = obj.optJSONObject("account")?.let(AccountSymbols::fromJson),
                     settings = obj.optJSONObject("settings")?.let(SettingsSymbols::fromJson),
                     mineProfile = obj.optJSONObject("mineProfile")?.let(MineProfileSymbols::fromJson),
@@ -103,7 +118,7 @@ data class BiliHookSymbols(
 }
 
 object DexKitRuleVersions {
-    const val CURRENT = 10
+    const val CURRENT = 17
 }
 
 data class HookPointStatus(
@@ -157,6 +172,265 @@ enum class HookPointState {
             entries.firstOrNull { it.name == raw } ?: MISSING
     }
 }
+
+data class SplashAdSymbols(
+    val parserMethods: List<MethodDescriptor>,
+    val evidence: String,
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("parserMethods", parserMethods.toJsonArray { it.toJson() })
+        .put("evidence", evidence)
+
+    fun restore(classLoader: ClassLoader): RestoredSplashAdSymbols? {
+        return RestoredSplashAdSymbols(parserMethods.restoreAll(classLoader) ?: return null)
+    }
+
+    companion object {
+        fun fromJson(obj: JSONObject): SplashAdSymbols = SplashAdSymbols(
+            parserMethods = obj.optJSONArray("parserMethods").toList { MethodDescriptor.fromJson(it) },
+            evidence = obj.optString("evidence", "-"),
+        )
+    }
+}
+
+data class RestoredSplashAdSymbols(
+    val parserMethods: List<Method>,
+)
+
+data class ShareSymbols(
+    val legacyGetLink: MethodDescriptor? = null,
+    val legacyGetContent: MethodDescriptor? = null,
+    val legacyGetShareMode: MethodDescriptor? = null,
+    val shareContentClassName: String? = null,
+    val shareContentCopyMethods: List<MethodDescriptor>,
+    val shareContentGetLink: MethodDescriptor? = null,
+    val shareContentGetContent: MethodDescriptor? = null,
+    val shareContentGetMode: MethodDescriptor? = null,
+    val shareBiliContentClassName: String? = null,
+    val shareBiliContentCopyMethods: List<MethodDescriptor>,
+    val shareBiliContentGetDescription: MethodDescriptor? = null,
+    val shareBiliContentGetContentUrl: MethodDescriptor? = null,
+    val copyContentClassName: String? = null,
+    val copyContentGetters: List<MethodDescriptor>,
+    val copyUtilityMethods: List<MethodDescriptor>,
+    val evidence: String,
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .putOpt("legacyGetLink", legacyGetLink?.toJson())
+        .putOpt("legacyGetContent", legacyGetContent?.toJson())
+        .putOpt("legacyGetShareMode", legacyGetShareMode?.toJson())
+        .putOpt("shareContentClassName", shareContentClassName)
+        .put("shareContentCopyMethods", shareContentCopyMethods.toJsonArray { it.toJson() })
+        .putOpt("shareContentGetLink", shareContentGetLink?.toJson())
+        .putOpt("shareContentGetContent", shareContentGetContent?.toJson())
+        .putOpt("shareContentGetMode", shareContentGetMode?.toJson())
+        .putOpt("shareBiliContentClassName", shareBiliContentClassName)
+        .put("shareBiliContentCopyMethods", shareBiliContentCopyMethods.toJsonArray { it.toJson() })
+        .putOpt("shareBiliContentGetDescription", shareBiliContentGetDescription?.toJson())
+        .putOpt("shareBiliContentGetContentUrl", shareBiliContentGetContentUrl?.toJson())
+        .putOpt("copyContentClassName", copyContentClassName)
+        .put("copyContentGetters", copyContentGetters.toJsonArray { it.toJson() })
+        .put("copyUtilityMethods", copyUtilityMethods.toJsonArray { it.toJson() })
+        .put("evidence", evidence)
+
+    fun restore(classLoader: ClassLoader): RestoredShareSymbols =
+        RestoredShareSymbols(
+            legacyGetLink = legacyGetLink.restoreOptional(classLoader),
+            legacyGetContent = legacyGetContent.restoreOptional(classLoader),
+            legacyGetShareMode = legacyGetShareMode.restoreOptional(classLoader),
+            shareContentClass = shareContentClassName?.let(classLoader::loadClassOrNull),
+            shareContentCopyMethods = shareContentCopyMethods.restoreAvailable(classLoader),
+            shareContentGetLink = shareContentGetLink.restoreOptional(classLoader),
+            shareContentGetContent = shareContentGetContent.restoreOptional(classLoader),
+            shareContentGetMode = shareContentGetMode.restoreOptional(classLoader),
+            shareBiliContentClass = shareBiliContentClassName?.let(classLoader::loadClassOrNull),
+            shareBiliContentCopyMethods = shareBiliContentCopyMethods.restoreAvailable(classLoader),
+            shareBiliContentGetDescription = shareBiliContentGetDescription.restoreOptional(classLoader),
+            shareBiliContentGetContentUrl = shareBiliContentGetContentUrl.restoreOptional(classLoader),
+            copyContentClass = copyContentClassName?.let(classLoader::loadClassOrNull),
+            copyContentGetters = copyContentGetters.restoreAvailable(classLoader),
+            copyUtilityMethods = copyUtilityMethods.restoreAvailable(classLoader),
+        )
+
+    companion object {
+        fun fromJson(obj: JSONObject): ShareSymbols = ShareSymbols(
+            legacyGetLink = obj.optJSONObject("legacyGetLink")?.let(MethodDescriptor::fromJson),
+            legacyGetContent = obj.optJSONObject("legacyGetContent")?.let(MethodDescriptor::fromJson),
+            legacyGetShareMode = obj.optJSONObject("legacyGetShareMode")?.let(MethodDescriptor::fromJson),
+            shareContentClassName = obj.optString("shareContentClassName").takeIf { it.isNotBlank() },
+            shareContentCopyMethods = obj.optJSONArray("shareContentCopyMethods").toList {
+                MethodDescriptor.fromJson(it)
+            },
+            shareContentGetLink = obj.optJSONObject("shareContentGetLink")?.let(MethodDescriptor::fromJson),
+            shareContentGetContent = obj.optJSONObject("shareContentGetContent")?.let(MethodDescriptor::fromJson),
+            shareContentGetMode = obj.optJSONObject("shareContentGetMode")?.let(MethodDescriptor::fromJson),
+            shareBiliContentClassName = obj.optString("shareBiliContentClassName").takeIf { it.isNotBlank() },
+            shareBiliContentCopyMethods = obj.optJSONArray("shareBiliContentCopyMethods").toList {
+                MethodDescriptor.fromJson(it)
+            },
+            shareBiliContentGetDescription = obj.optJSONObject("shareBiliContentGetDescription")
+                ?.let(MethodDescriptor::fromJson),
+            shareBiliContentGetContentUrl = obj.optJSONObject("shareBiliContentGetContentUrl")
+                ?.let(MethodDescriptor::fromJson),
+            copyContentClassName = obj.optString("copyContentClassName").takeIf { it.isNotBlank() },
+            copyContentGetters = obj.optJSONArray("copyContentGetters").toList { MethodDescriptor.fromJson(it) },
+            copyUtilityMethods = obj.optJSONArray("copyUtilityMethods").toList { MethodDescriptor.fromJson(it) },
+            evidence = obj.optString("evidence", "-"),
+        )
+    }
+}
+
+data class RestoredShareSymbols(
+    val legacyGetLink: Method?,
+    val legacyGetContent: Method?,
+    val legacyGetShareMode: Method?,
+    val shareContentClass: Class<*>?,
+    val shareContentCopyMethods: List<Method>,
+    val shareContentGetLink: Method?,
+    val shareContentGetContent: Method?,
+    val shareContentGetMode: Method?,
+    val shareBiliContentClass: Class<*>?,
+    val shareBiliContentCopyMethods: List<Method>,
+    val shareBiliContentGetDescription: Method?,
+    val shareBiliContentGetContentUrl: Method?,
+    val copyContentClass: Class<*>?,
+    val copyContentGetters: List<Method>,
+    val copyUtilityMethods: List<Method>,
+)
+
+data class RewardAdSymbols(
+    val activityOnCreate: MethodDescriptor? = null,
+    val activityOnResume: MethodDescriptor? = null,
+    val activityOnStop: MethodDescriptor? = null,
+    val headerSetTotalTime: MethodDescriptor? = null,
+    val headerSetElapsedTime: MethodDescriptor? = null,
+    val headerStartTimer: MethodDescriptor? = null,
+    val countDownSetTotalTime: MethodDescriptor? = null,
+    val countDownSetElapsedTime: MethodDescriptor? = null,
+    val jumpClockField: FieldDescriptor? = null,
+    val evidence: String,
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .putOpt("activityOnCreate", activityOnCreate?.toJson())
+        .putOpt("activityOnResume", activityOnResume?.toJson())
+        .putOpt("activityOnStop", activityOnStop?.toJson())
+        .putOpt("headerSetTotalTime", headerSetTotalTime?.toJson())
+        .putOpt("headerSetElapsedTime", headerSetElapsedTime?.toJson())
+        .putOpt("headerStartTimer", headerStartTimer?.toJson())
+        .putOpt("countDownSetTotalTime", countDownSetTotalTime?.toJson())
+        .putOpt("countDownSetElapsedTime", countDownSetElapsedTime?.toJson())
+        .putOpt("jumpClockField", jumpClockField?.toJson())
+        .put("evidence", evidence)
+
+    fun restore(classLoader: ClassLoader): RestoredRewardAdSymbols =
+        RestoredRewardAdSymbols(
+            activityOnCreate = activityOnCreate.restoreOptional(classLoader),
+            activityOnResume = activityOnResume.restoreOptional(classLoader),
+            activityOnStop = activityOnStop.restoreOptional(classLoader),
+            headerSetTotalTime = headerSetTotalTime.restoreOptional(classLoader),
+            headerSetElapsedTime = headerSetElapsedTime.restoreOptional(classLoader),
+            headerStartTimer = headerStartTimer.restoreOptional(classLoader),
+            countDownSetTotalTime = countDownSetTotalTime.restoreOptional(classLoader),
+            countDownSetElapsedTime = countDownSetElapsedTime.restoreOptional(classLoader),
+            jumpClockField = jumpClockField.restoreOptional(classLoader),
+        )
+
+    companion object {
+        fun fromJson(obj: JSONObject): RewardAdSymbols = RewardAdSymbols(
+            activityOnCreate = obj.optJSONObject("activityOnCreate")?.let(MethodDescriptor::fromJson),
+            activityOnResume = obj.optJSONObject("activityOnResume")?.let(MethodDescriptor::fromJson),
+            activityOnStop = obj.optJSONObject("activityOnStop")?.let(MethodDescriptor::fromJson),
+            headerSetTotalTime = obj.optJSONObject("headerSetTotalTime")?.let(MethodDescriptor::fromJson),
+            headerSetElapsedTime = obj.optJSONObject("headerSetElapsedTime")?.let(MethodDescriptor::fromJson),
+            headerStartTimer = obj.optJSONObject("headerStartTimer")?.let(MethodDescriptor::fromJson),
+            countDownSetTotalTime = obj.optJSONObject("countDownSetTotalTime")?.let(MethodDescriptor::fromJson),
+            countDownSetElapsedTime = obj.optJSONObject("countDownSetElapsedTime")?.let(MethodDescriptor::fromJson),
+            jumpClockField = obj.optJSONObject("jumpClockField")?.let(FieldDescriptor::fromJson),
+            evidence = obj.optString("evidence", "-"),
+        )
+    }
+}
+
+data class RestoredRewardAdSymbols(
+    val activityOnCreate: Method?,
+    val activityOnResume: Method?,
+    val activityOnStop: Method?,
+    val headerSetTotalTime: Method?,
+    val headerSetElapsedTime: Method?,
+    val headerStartTimer: Method?,
+    val countDownSetTotalTime: Method?,
+    val countDownSetElapsedTime: Method?,
+    val jumpClockField: Field?,
+)
+
+data class TryFreeQualitySymbols(
+    val getIsNeedTrialMethods: List<MethodDescriptor>,
+    val setIsNeedTrialMethods: List<MethodDescriptor>,
+    val getVipFreeMethods: List<MethodDescriptor>,
+    val getNeedVipMethods: List<MethodDescriptor>,
+    val evidence: String,
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("getIsNeedTrialMethods", getIsNeedTrialMethods.toJsonArray { it.toJson() })
+        .put("setIsNeedTrialMethods", setIsNeedTrialMethods.toJsonArray { it.toJson() })
+        .put("getVipFreeMethods", getVipFreeMethods.toJsonArray { it.toJson() })
+        .put("getNeedVipMethods", getNeedVipMethods.toJsonArray { it.toJson() })
+        .put("evidence", evidence)
+
+    fun restore(classLoader: ClassLoader): RestoredTryFreeQualitySymbols? {
+        return RestoredTryFreeQualitySymbols(
+            getIsNeedTrialMethods = getIsNeedTrialMethods.restoreAll(classLoader) ?: return null,
+            setIsNeedTrialMethods = setIsNeedTrialMethods.restoreAll(classLoader) ?: return null,
+            getVipFreeMethods = getVipFreeMethods.restoreAll(classLoader) ?: return null,
+            getNeedVipMethods = getNeedVipMethods.restoreAll(classLoader) ?: return null,
+        )
+    }
+
+    companion object {
+        fun fromJson(obj: JSONObject): TryFreeQualitySymbols = TryFreeQualitySymbols(
+            getIsNeedTrialMethods = obj.optJSONArray("getIsNeedTrialMethods").toList {
+                MethodDescriptor.fromJson(it)
+            },
+            setIsNeedTrialMethods = obj.optJSONArray("setIsNeedTrialMethods").toList {
+                MethodDescriptor.fromJson(it)
+            },
+            getVipFreeMethods = obj.optJSONArray("getVipFreeMethods").toList { MethodDescriptor.fromJson(it) },
+            getNeedVipMethods = obj.optJSONArray("getNeedVipMethods").toList { MethodDescriptor.fromJson(it) },
+            evidence = obj.optString("evidence", "-"),
+        )
+    }
+}
+
+data class RestoredTryFreeQualitySymbols(
+    val getIsNeedTrialMethods: List<Method>,
+    val setIsNeedTrialMethods: List<Method>,
+    val getVipFreeMethods: List<Method>,
+    val getNeedVipMethods: List<Method>,
+)
+
+data class TeenagersModeSymbols(
+    val onCreateMethods: List<MethodDescriptor>,
+    val evidence: String,
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("onCreateMethods", onCreateMethods.toJsonArray { it.toJson() })
+        .put("evidence", evidence)
+
+    fun restore(classLoader: ClassLoader): RestoredTeenagersModeSymbols? {
+        return RestoredTeenagersModeSymbols(onCreateMethods.restoreAll(classLoader) ?: return null)
+    }
+
+    companion object {
+        fun fromJson(obj: JSONObject): TeenagersModeSymbols = TeenagersModeSymbols(
+            onCreateMethods = obj.optJSONArray("onCreateMethods").toList { MethodDescriptor.fromJson(it) },
+            evidence = obj.optString("evidence", "-"),
+        )
+    }
+}
+
+data class RestoredTeenagersModeSymbols(
+    val onCreateMethods: List<Method>,
+)
 
 data class AccountSymbols(
     val accountClassName: String,
@@ -803,16 +1077,21 @@ data class RestoredPegasusResponseGetItemsSymbols(
 
 data class HomeComponentHideSymbols(
     val baseHomeFragmentMethods: List<MethodDescriptor>,
+    val componentCatalogMethod: MethodDescriptor? = null,
     val evidence: String,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("baseHomeFragmentMethods", baseHomeFragmentMethods.toJsonArray { it.toJson() })
+        .putOpt("componentCatalogMethod", componentCatalogMethod?.toJson())
         .put("evidence", evidence)
 
     fun restore(classLoader: ClassLoader): RestoredHomeComponentHideSymbols? {
         val methods = baseHomeFragmentMethods.mapNotNull { it.restoreOptional(classLoader) }
         if (methods.size != baseHomeFragmentMethods.size) return null
-        return RestoredHomeComponentHideSymbols(methods)
+        return RestoredHomeComponentHideSymbols(
+            baseHomeFragmentMethods = methods,
+            componentCatalogMethod = componentCatalogMethod?.restoreOptional(classLoader),
+        )
     }
 
     companion object {
@@ -820,6 +1099,7 @@ data class HomeComponentHideSymbols(
             baseHomeFragmentMethods = obj.optJSONArray("baseHomeFragmentMethods").toList {
                 MethodDescriptor.fromJson(it)
             },
+            componentCatalogMethod = obj.optJSONObject("componentCatalogMethod")?.let(MethodDescriptor::fromJson),
             evidence = obj.optString("evidence", "-"),
         )
     }
@@ -827,6 +1107,7 @@ data class HomeComponentHideSymbols(
 
 data class RestoredHomeComponentHideSymbols(
     val baseHomeFragmentMethods: List<Method>,
+    val componentCatalogMethod: Method?,
 )
 
 data class VideoCommentSymbols(
@@ -1292,6 +1573,9 @@ internal fun List<MethodDescriptor>.restoreAll(classLoader: ClassLoader): List<M
     val methods = mapNotNull { it.restoreOptional(classLoader) }
     return methods.takeIf { it.size == size }
 }
+
+internal fun List<MethodDescriptor>.restoreAvailable(classLoader: ClassLoader): List<Method> =
+    mapNotNull { it.restoreOptional(classLoader) }
 
 internal fun Method.hasParameterTypes(vararg names: String): Boolean =
     parameterTypes.map { it.name } == names.toList()

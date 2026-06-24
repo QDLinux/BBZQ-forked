@@ -36,21 +36,76 @@ object BiliSymbolResolver {
     private const val HP_ACCOUNT_ACCESS_KEY = "AccessKeyHook.BiliAccounts"
     private const val HP_SETTINGS_FRAGMENT = "SettingHook.PreferenceFragments"
     private const val HP_MINE_VIP = "MineProfileHook.VipEntrance"
+    private const val HP_SPLASH_AD = "SplashAdHook.JsonParsers"
+    private const val HP_SHARE = "ShareHook.InstallPoints"
+    private const val HP_SHARE_LEGACY = "ShareHook.LegacyShareClickResult"
+    private const val HP_SHARE_CONTENT = "ShareHook.ShareContent"
+    private const val HP_SHARE_BILI_CONTENT = "ShareHook.ShareBiliContent"
+    private const val HP_SHARE_COPY_CONTENT = "ShareHook.CopyContent"
+    private const val HP_SHARE_COPY_UTILITY = "ShareHook.CopyUtility"
+    private const val HP_REWARD_AD = "RewardAdHook.InstallPoints"
+    private const val HP_REWARD_AD_ACTIVITY = "RewardAdHook.Activity"
+    private const val HP_REWARD_AD_HEADER = "RewardAdHook.HeaderTimer"
+    private const val HP_REWARD_AD_COUNTDOWN = "RewardAdHook.CountDownText"
+    private const val HP_REWARD_AD_JUMP_CLOCK = "RewardAdHook.JumpClock"
+    private const val HP_REWARD_AD_ACTIVITY_SWEEPER = "RewardAdHook.ActivitySweeper"
+    private const val HP_TRY_FREE_QUALITY = "TryFreeQualityHook.GeneratedMessages"
+    private const val HP_TEENAGERS_MODE = "TeenagersModeHook.DialogActivity"
     private const val HP_DOWNLOAD_THREAD_LISTENER = "DownloadThreadHook.Listener"
     private const val HP_DOWNLOAD_THREAD_REPORT = "DownloadThreadHook.ReportMethod"
     private const val HP_HOME_RECOMMEND_AUTO_REFRESH = "HomeRecommendAutoRefreshHook.AutoRefresh"
     private const val HP_STORY_PLAYER_AD = "StoryPlayerAdHook.InstallPoints"
     private const val HP_VIDEO_DETAIL_BANNER_AD = "VideoDetailBannerAdHook.InstallPoints"
+    private const val HP_VIDEO_DETAIL_BANNER_PROXY = "VideoDetailBannerAdHook.Proxy"
+    private const val HP_VIDEO_DETAIL_BANNER_RELATE_GAME = "VideoDetailBannerAdHook.RelateGame"
     private const val HP_COMMENT_PICTURE = "CommentPictureHook.InitView"
     private const val HP_HOME_TOP_BAR = "HomeTopBarPurifyHook.InstallPoints"
+    private const val HP_HOME_TOP_BAR_GAME = "HomeTopBarPurifyHook.GameMenu"
+    private const val HP_HOME_TOP_BAR_VIEW_CREATED = "HomeTopBarPurifyHook.OnViewCreated"
+    private const val HP_HOME_TOP_BAR_DEFAULT_WORD = "HomeTopBarPurifyHook.DefaultSearchWord"
     private const val HP_BOTTOM_BAR = "BottomBarHook.InstallPoints"
+    private const val HP_BOTTOM_BAR_JSON_PARSER = "BottomBarHook.JsonParser"
+    private const val HP_BOTTOM_BAR_RESOURCE = "BottomBarHook.ResourceManager"
     private const val HP_HOME_RECOMMEND_FEED = "HomeRecommendFeed.Pegasus"
     private const val HP_HOME_COMPONENT_HIDE = "HomeComponentHideHook.Components"
+    private const val HP_HOME_COMPONENT_HIDE_CATALOG = "HomeComponentHideHook.ComponentCatalog"
     private const val HP_VIDEO_COMMENT = "VideoCommentHook.InstallPoints"
+    private const val HP_VIDEO_COMMENT_DISABLE = "VideoCommentHook.DisableComment"
+    private const val HP_VIDEO_COMMENT_QUICK_REPLY = "VideoCommentHook.QuickReply"
+    private const val HP_VIDEO_COMMENT_WIDGETS = "VideoCommentHook.Widgets"
+    private const val HP_VIDEO_COMMENT_SEARCH = "VideoCommentHook.SearchUrls"
+    private const val HP_VIDEO_COMMENT_EMPTY_PAGE = "VideoCommentHook.EmptyPage"
+    private const val HP_VIDEO_COMMENT_MAIN_LIST = "VideoCommentHook.MainList"
     private const val HP_SKIP_VIDEO_AD = "SkipVideoAdHook.InstallPoints"
+    private const val HP_SKIP_VIDEO_AD_PLAY_VIEW = "SkipVideoAdHook.PlayView"
+    private const val HP_SKIP_VIDEO_AD_PLAYER_CORE = "SkipVideoAdHook.PlayerCore"
+    private const val HP_SKIP_VIDEO_AD_CARD = "SkipVideoAdHook.CardPlayer"
     private const val HP_SKIP_VIDEO_AD_PROGRESS = "SkipVideoAdProgressHook.InstallPoints"
+    private const val HP_SKIP_VIDEO_AD_PROGRESS_DRAW = "SkipVideoAdProgressHook.ProgressDraw"
+    private const val HP_SKIP_VIDEO_AD_PROGRESS_STORY = "SkipVideoAdProgressHook.StorySeekBar"
+    private const val HP_SKIP_VIDEO_AD_PROGRESS_INLINE = "SkipVideoAdProgressHook.InlineProgress"
     private const val HP_SKIP_VIDEO_AD_AUTO_LIKE = "SkipVideoAdAutoLike.InstallPoints"
+    private const val HP_SKIP_VIDEO_AD_AUTO_LIKE_DETAIL = "SkipVideoAdAutoLike.Detail"
+    private const val HP_SKIP_VIDEO_AD_AUTO_LIKE_STORY = "SkipVideoAdAutoLike.Story"
+    private const val HP_SKIP_VIDEO_AD_AUTO_LIKE_GEMINI = "SkipVideoAdAutoLike.Gemini"
+    private const val HP_STORY_PLAYER_AD_FEED = "StoryPlayerAdHook.Feed"
+    private const val HP_STORY_PLAYER_AD_PAGER = "StoryPlayerAdHook.Pager"
+    private const val HP_STORY_PLAYER_AD_RERANK = "StoryPlayerAdHook.Rerank"
     private const val HP_CHRONOS_PROMOTION = "ChronosPromotionHook.InstallPoints"
+    private const val HP_CHRONOS_RPC_RECEIVE = "ChronosPromotionHook.ReceiveRpc"
+    private const val HP_CHRONOS_LOCAL_VIEW_PROGRESS = "ChronosPromotionHook.LocalViewProgress"
+    private const val HP_CHRONOS_LOCAL_DM_VIEW = "ChronosPromotionHook.LocalDmView"
+    private const val HP_CHRONOS_MESSAGE_SENDER = "ChronosPromotionHook.MessageSender"
+    private const val HP_CHRONOS_COMMAND_DM_LIST = "ChronosPromotionHook.CommandDmList"
+    private const val HP_CHRONOS_REMOTE_VIDEO_DETAIL_STATE = "ChronosPromotionHook.RemoteVideoDetailState"
+    private const val HP_CHRONOS_REMOTE_VIEW_PROGRESS = "ChronosPromotionHook.RemoteViewProgress"
+    private const val HP_CHRONOS_REMOTE_COMMAND_DANMAKU = "ChronosPromotionHook.RemoteCommandDanmaku"
+    private const val HP_CHRONOS_REMOTE_ADD_DANMAKU = "ChronosPromotionHook.RemoteAddDanmaku"
+    private const val HP_CHRONOS_REMOTE_AD_FLOAT_EXPOSURE = "ChronosPromotionHook.RemoteAdFloatExposure"
+    private const val HP_CHRONOS_AD_DANMAKU_FEED = "ChronosPromotionHook.AdDanmakuFeed"
+    private const val HP_CHRONOS_INTERACT_LAYER_VIEW_PROGRESS = "ChronosPromotionHook.InteractLayerViewProgress"
+    private const val HP_CHRONOS_GEMINI_OPERATION_RENDER = "ChronosPromotionHook.GeminiOperationRender"
+    private const val HP_CHRONOS_GEMINI_OPERATION_UPDATE = "ChronosPromotionHook.GeminiOperationUpdate"
 
     @Volatile
     private var memorySymbols: BiliHookSymbols? = null
@@ -157,6 +212,21 @@ object BiliSymbolResolver {
         }
 
         val hookPoints = ArrayList<HookPointStatus>()
+        val splashAd = scanHookPoint(HP_SPLASH_AD, hookPoints, scanErrors, log) {
+            scanSplashAd(classLoader)
+        }
+        val share = scanHookPoint(HP_SHARE, hookPoints, scanErrors, log) {
+            scanShare(classLoader)
+        }
+        val rewardAd = scanHookPoint(HP_REWARD_AD, hookPoints, scanErrors, log) {
+            scanRewardAd(classLoader)
+        }
+        val tryFreeQuality = scanHookPoint(HP_TRY_FREE_QUALITY, hookPoints, scanErrors, log) {
+            scanTryFreeQuality(classLoader)
+        }
+        val teenagersMode = scanHookPoint(HP_TEENAGERS_MODE, hookPoints, scanErrors, log) {
+            scanTeenagersMode(classLoader)
+        }
         val account = scanHookPoint(HP_ACCOUNT_ACCESS_KEY, hookPoints, scanErrors, log) {
             scanAccount(classLoader, ::bridge)
         }
@@ -228,6 +298,11 @@ object BiliSymbolResolver {
             fingerprint = fingerprint,
             hookPoints = hookPoints,
             scanErrors = scanErrors.distinct(),
+            splashAd = splashAd,
+            share = share,
+            rewardAd = rewardAd,
+            tryFreeQuality = tryFreeQuality,
+            teenagersMode = teenagersMode,
             account = account,
             settings = settings,
             mineProfile = mineProfile,
@@ -259,6 +334,7 @@ object BiliSymbolResolver {
             when (val result = block()) {
                 is SymbolScanResult.Found -> {
                     hookPoints += HookPointStatus.found(id, result.target, result.evidence)
+                    hookPoints += result.hookPoints
                     result.value
                 }
                 is SymbolScanResult.Missing -> {
@@ -286,6 +362,7 @@ object BiliSymbolResolver {
             when (val result = block()) {
                 is SymbolScanResult.Found -> {
                     hookPoints += HookPointStatus.found(id, result.target, result.evidence)
+                    hookPoints += result.hookPoints
                     result.value
                 }
                 is SymbolScanResult.Missing -> {
@@ -300,6 +377,210 @@ object BiliSymbolResolver {
             log("BiliSymbolResolver $id scan failed", t)
             null
         }
+    }
+
+    private fun scanSplashAd(classLoader: ClassLoader): SymbolScanResult<SplashAdSymbols> {
+        val gsonParsers = classLoader.loadClassOrNull(SPLASH_GSON_CLASS)
+            ?.allMethods()
+            ?.filter { it.name == "fromJson" && !Modifier.isAbstract(it.modifiers) && it.returnType != Void.TYPE }
+            ?.toList()
+            .orEmpty()
+        val fastJsonParsers = SPLASH_FAST_JSON_CLASSES.firstNotNullOfOrNull { classLoader.loadClassOrNull(it) }
+            ?.declaredMethods
+            ?.filter {
+                Modifier.isStatic(it.modifiers) &&
+                    it.name in SPLASH_FAST_JSON_PARSE_METHODS &&
+                    it.returnType != Void.TYPE
+            }
+            .orEmpty()
+        val kotlinxParsers = SPLASH_KOTLINX_JSON_CLASSES.firstNotNullOfOrNull { classLoader.loadClassOrNull(it) }
+            ?.allMethods()
+            ?.filter { it.name == "decodeFromString" && it.parameterCount >= 2 && it.returnType != Void.TYPE }
+            ?.toList()
+            .orEmpty()
+        val total = gsonParsers.size + fastJsonParsers.size + kotlinxParsers.size
+        if (total == 0) return SymbolScanResult.Missing("json parser hook methods not found")
+        val symbols = SplashAdSymbols(
+            parserMethods = (gsonParsers + fastJsonParsers + kotlinxParsers)
+                .distinctBy(Method::toGenericString)
+                .map(MethodDescriptor::of),
+            evidence = "gson=${gsonParsers.size},fastjson=${fastJsonParsers.size},kotlinx=${kotlinxParsers.size}",
+        )
+        return SymbolScanResult.Found(symbols, "JsonParsers", symbols.evidence)
+    }
+
+    private fun scanShare(classLoader: ClassLoader): SymbolScanResult<ShareSymbols> {
+        val legacyClass = classLoader.loadClassOrNull(SHARE_LEGACY_RESULT)
+        val legacyGetLink = legacyClass?.findNoArgStringMethod("getLink")
+        val legacyGetContent = legacyClass?.findNoArgStringMethod("getContent")
+        val legacyGetShareMode = legacyClass?.findNoArgMethod("getShareMode")
+        val legacyCount = listOfNotNull(legacyGetLink, legacyGetContent, legacyGetShareMode).size
+
+        val shareContentClass = SHARE_CONTENT_CLASSES.firstNotNullOfOrNull { classLoader.loadClassOrNull(it) }
+        val shareContentCopyMethods = shareContentClass?.copyLikeMethods().orEmpty()
+        val shareContentGetLink = shareContentClass?.findNoArgStringMethod("getLink")
+        val shareContentGetContent = shareContentClass?.findNoArgStringMethod("getContent")
+        val shareContentGetMode = shareContentClass?.findNoArgMethod("getMode")
+        val shareContentCount = shareContentClass.installWeight(
+            shareContentCopyMethods,
+            shareContentGetLink,
+            shareContentGetContent,
+            shareContentGetMode,
+        )
+
+        val shareBiliContentClass = SHARE_BILI_CONTENT_CLASSES.firstNotNullOfOrNull { classLoader.loadClassOrNull(it) }
+        val shareBiliContentCopyMethods = shareBiliContentClass?.copyLikeMethods().orEmpty()
+        val shareBiliContentGetDescription = shareBiliContentClass?.findNoArgStringMethod("getDescription")
+        val shareBiliContentGetContentUrl = shareBiliContentClass?.findNoArgStringMethod("getContentUrl")
+        val shareBiliContentCount = shareBiliContentClass.installWeight(
+            shareBiliContentCopyMethods,
+            shareBiliContentGetDescription,
+            shareBiliContentGetContentUrl,
+        )
+
+        val copyContentClass = SHARE_COPY_CONTENT_CLASSES.firstNotNullOfOrNull { classLoader.loadClassOrNull(it) }
+        val copyContentGetters = listOfNotNull(
+            copyContentClass?.findNoArgStringMethod("c"),
+            copyContentClass?.findNoArgStringMethod("mo127c"),
+        )
+        val copyContentCount = copyContentClass.installWeight(copyContentGetters)
+
+        val copyUtilityMethods = SHARE_COPY_UTILITY_CLASSES.firstNotNullOfOrNull { classLoader.loadClassOrNull(it) }
+            ?.allMethods()
+            ?.filter {
+                Modifier.isStatic(it.modifiers) &&
+                    it.parameterTypes.contentEquals(arrayOf(String::class.java)) &&
+                    it.returnType == Void.TYPE
+            }
+            ?.toList()
+            .orEmpty()
+        val copyUtilityCount = copyUtilityMethods.size
+        val hookPoints = listOf(
+            optionalChildHookPoint(HP_SHARE_LEGACY, legacyCount > 0, "legacy share result hooks not found", "methods=$legacyCount"),
+            optionalChildHookPoint(HP_SHARE_CONTENT, shareContentCount > 0, "share content hooks not found", "methods=$shareContentCount"),
+            optionalChildHookPoint(HP_SHARE_BILI_CONTENT, shareBiliContentCount > 0, "share bili content hooks not found", "methods=$shareBiliContentCount"),
+            optionalChildHookPoint(HP_SHARE_COPY_CONTENT, copyContentCount > 0, "copy content hooks not found", "methods=$copyContentCount"),
+            optionalChildHookPoint(HP_SHARE_COPY_UTILITY, copyUtilityCount > 0, "copy utility hook not found", "methods=$copyUtilityCount"),
+        )
+        val total = legacyCount + shareContentCount + shareBiliContentCount + copyContentCount + copyUtilityCount + 1
+        val symbols = ShareSymbols(
+            legacyGetLink = legacyGetLink?.let(MethodDescriptor::of),
+            legacyGetContent = legacyGetContent?.let(MethodDescriptor::of),
+            legacyGetShareMode = legacyGetShareMode?.let(MethodDescriptor::of),
+            shareContentClassName = shareContentClass?.name,
+            shareContentCopyMethods = shareContentCopyMethods.map(MethodDescriptor::of),
+            shareContentGetLink = shareContentGetLink?.let(MethodDescriptor::of),
+            shareContentGetContent = shareContentGetContent?.let(MethodDescriptor::of),
+            shareContentGetMode = shareContentGetMode?.let(MethodDescriptor::of),
+            shareBiliContentClassName = shareBiliContentClass?.name,
+            shareBiliContentCopyMethods = shareBiliContentCopyMethods.map(MethodDescriptor::of),
+            shareBiliContentGetDescription = shareBiliContentGetDescription?.let(MethodDescriptor::of),
+            shareBiliContentGetContentUrl = shareBiliContentGetContentUrl?.let(MethodDescriptor::of),
+            copyContentClassName = copyContentClass?.name,
+            copyContentGetters = copyContentGetters.map(MethodDescriptor::of),
+            copyUtilityMethods = copyUtilityMethods.map(MethodDescriptor::of),
+            evidence = "methods=$total",
+        )
+        return SymbolScanResult.Found(symbols, "ClipboardFallback", symbols.evidence, hookPoints)
+    }
+
+    private fun scanRewardAd(classLoader: ClassLoader): SymbolScanResult<RewardAdSymbols> {
+        val activityClass = REWARD_ACTIVITY_CLASSES.firstNotNullOfOrNull { classLoader.loadClassOrNull(it) }
+        val activityOnCreate = activityClass?.findMethod("onCreate", Void.TYPE, Bundle::class.java)
+        val activityOnResume = activityClass?.findMethod("onResume", Void.TYPE)
+        val activityOnStop = activityClass?.findMethod("onStop", Void.TYPE)
+        val activityCount = listOfNotNull(activityOnCreate, activityOnResume, activityOnStop).size
+
+        val headerClass = classLoader.loadClassOrNull(REWARD_HEADER_VIEW)
+        val headerSetTotalTime = headerClass?.findMethod("setTotalTime", Void.TYPE, Int::class.javaPrimitiveType!!)
+        val headerSetElapsedTime = headerClass?.findMethod("setElapsedTime", Void.TYPE, Long::class.javaPrimitiveType!!)
+        val headerStartTimer = headerClass?.findMethod("startTimer", Void.TYPE)
+        val headerCount = listOfNotNull(headerSetTotalTime, headerSetElapsedTime, headerStartTimer).size
+
+        val countDownClass = classLoader.loadClassOrNull(REWARD_COUNT_DOWN_TEXT_VIEW)
+        val countDownSetTotalTime = countDownClass?.findMethod("setTotalTime", Void.TYPE, Int::class.javaPrimitiveType!!)
+        val countDownSetElapsedTime = countDownClass?.findMethod("setElapsedTime", Void.TYPE, Long::class.javaPrimitiveType!!)
+        val countDownCount = listOfNotNull(countDownSetTotalTime, countDownSetElapsedTime).size
+
+        val jumpClockField = REWARD_JUMP_CLOCK_CLASSES.firstNotNullOfOrNull { className ->
+            classLoader.loadClassOrNull(className)
+                ?.declaredFields
+                ?.singleOrNull { field ->
+                    Modifier.isStatic(field.modifiers) &&
+                        (field.type == java.lang.Long::class.java || field.type == Long::class.javaPrimitiveType)
+                }
+                ?.apply { isAccessible = true }
+        }
+        val hookPoints = listOf(
+            childHookPoint(HP_REWARD_AD_ACTIVITY, activityCount > 0, "reward activity hooks not found", "methods=$activityCount"),
+            childHookPoint(HP_REWARD_AD_HEADER, headerCount > 0, "reward header timer hooks not found", "methods=$headerCount"),
+            childHookPoint(HP_REWARD_AD_COUNTDOWN, countDownCount > 0, "countdown text hooks not found", "methods=$countDownCount"),
+            optionalChildHookPoint(HP_REWARD_AD_JUMP_CLOCK, jumpClockField != null, "jump clock field not found", "field=${jumpClockField?.name}"),
+            HookPointStatus.found(HP_REWARD_AD_ACTIVITY_SWEEPER, "android.app.Activity.onResume", "sdk=true"),
+        )
+        val total = activityCount + headerCount + countDownCount + 1
+        if (total == 1) return SymbolScanResult.Missing("reward ad target hook points not found")
+        val symbols = RewardAdSymbols(
+            activityOnCreate = activityOnCreate?.let(MethodDescriptor::of),
+            activityOnResume = activityOnResume?.let(MethodDescriptor::of),
+            activityOnStop = activityOnStop?.let(MethodDescriptor::of),
+            headerSetTotalTime = headerSetTotalTime?.let(MethodDescriptor::of),
+            headerSetElapsedTime = headerSetElapsedTime?.let(MethodDescriptor::of),
+            headerStartTimer = headerStartTimer?.let(MethodDescriptor::of),
+            countDownSetTotalTime = countDownSetTotalTime?.let(MethodDescriptor::of),
+            countDownSetElapsedTime = countDownSetElapsedTime?.let(MethodDescriptor::of),
+            jumpClockField = jumpClockField?.let(FieldDescriptor::of),
+            evidence = "activity=$activityCount,header=$headerCount,countDown=$countDownCount,jumpClock=${jumpClockField != null}",
+        )
+        return SymbolScanResult.Found(symbols, "RewardAd", symbols.evidence, hookPoints)
+    }
+
+    private fun scanTryFreeQuality(classLoader: ClassLoader): SymbolScanResult<TryFreeQualitySymbols> {
+        val getIsNeedTrial = ArrayList<Method>()
+        val setIsNeedTrial = ArrayList<Method>()
+        TRY_FREE_NEED_TRIAL_CLASSES.forEach { className ->
+            val type = classLoader.loadClassOrNull(className) ?: return@forEach
+            type.findMethod("getIsNeedTrial", Boolean::class.javaPrimitiveType!!)?.let(getIsNeedTrial::add)
+            type.findMethod("setIsNeedTrial", Void.TYPE, Boolean::class.javaPrimitiveType!!)?.let(setIsNeedTrial::add)
+        }
+        val getVipFree = ArrayList<Method>()
+        val getNeedVip = ArrayList<Method>()
+        TRY_FREE_STREAM_INFO_CLASSES.forEach { className ->
+            val type = classLoader.loadClassOrNull(className) ?: return@forEach
+            type.findMethod("getVipFree", Boolean::class.javaPrimitiveType!!)?.let(getVipFree::add)
+            type.findMethod("getNeedVip", Boolean::class.javaPrimitiveType!!)?.let(getNeedVip::add)
+        }
+        val needTrialCount = getIsNeedTrial.size + setIsNeedTrial.size
+        val streamInfoCount = getVipFree.size + getNeedVip.size
+        val total = needTrialCount + streamInfoCount
+        if (total == 0) return SymbolScanResult.Missing("try-free quality generated message hooks not found")
+        val symbols = TryFreeQualitySymbols(
+            getIsNeedTrialMethods = getIsNeedTrial.map(MethodDescriptor::of),
+            setIsNeedTrialMethods = setIsNeedTrial.map(MethodDescriptor::of),
+            getVipFreeMethods = getVipFree.map(MethodDescriptor::of),
+            getNeedVipMethods = getNeedVip.map(MethodDescriptor::of),
+            evidence = "needTrial=$needTrialCount,streamInfo=$streamInfoCount",
+        )
+        return SymbolScanResult.Found(symbols, "GeneratedMessages", symbols.evidence)
+    }
+
+    private fun scanTeenagersMode(classLoader: ClassLoader): SymbolScanResult<TeenagersModeSymbols> {
+        val methods = TEENAGERS_MODE_ACTIVITIES.mapNotNull { className ->
+            classLoader.loadClassOrNull(className)?.let { type ->
+                type.allMethods()
+                    .firstOrNull {
+                        it.name == "onCreate" &&
+                            it.returnType == Void.TYPE &&
+                            it.parameterTypes.contentEquals(arrayOf(Bundle::class.java))
+                    }
+            }
+        }
+        if (methods.isEmpty()) return SymbolScanResult.Missing("teenagers mode dialog activity not found")
+        val symbols = TeenagersModeSymbols(
+            onCreateMethods = methods.map(MethodDescriptor::of),
+            evidence = "activities=${methods.size}",
+        )
+        return SymbolScanResult.Found(symbols, methods.joinToString("|") { "${it.declaringClass.name}.${it.name}" }, symbols.evidence)
     }
 
     private fun scanAccount(
@@ -651,6 +932,50 @@ object BiliSymbolResolver {
         return "${requestParamClass.name}:long=$longCount,bool=$booleanCount,flush=$flushCount"
     }
 
+    private fun childHookPoint(id: String, found: Boolean, missing: String, evidence: String = "-"): HookPointStatus =
+        if (found) {
+            HookPointStatus.found(id, id.substringAfterLast('.'), evidence)
+        } else {
+            HookPointStatus.missing(id, "fail closed: $missing")
+        }
+
+    private fun optionalChildHookPoint(id: String, found: Boolean, missing: String, evidence: String = "-"): HookPointStatus =
+        if (found) {
+            HookPointStatus.found(id, id.substringAfterLast('.'), evidence)
+        } else {
+            HookPointStatus.optional(id, missing)
+        }
+
+    private fun Class<*>.findMethod(name: String, returnType: Class<*>, vararg parameterTypes: Class<*>): Method? =
+        allMethods().firstOrNull {
+            it.name == name &&
+                it.returnType == returnType &&
+                it.parameterTypes.contentEquals(parameterTypes)
+        }
+
+    private fun Class<*>.findNoArgMethod(name: String): Method? =
+        allMethods().firstOrNull { it.name == name && it.parameterCount == 0 }
+
+    private fun Class<*>.findNoArgStringMethod(name: String): Method? =
+        findMethod(name, String::class.java)
+
+    private fun Class<*>?.copyLikeMethods(): List<Method> {
+        val type = this ?: return emptyList()
+        return type.allMethods()
+            .filter {
+                !Modifier.isStatic(it.modifiers) &&
+                    it.returnType == type &&
+                    it.parameterCount >= 2
+            }
+            .toList()
+    }
+
+    private fun Class<*>?.installWeight(vararg methods: Method?): Int =
+        if (this == null) 0 else declaredConstructors.size + methods.count { it != null }
+
+    private fun Class<*>?.installWeight(methods: List<Method>, vararg moreMethods: Method?): Int =
+        if (this == null) 0 else declaredConstructors.size + methods.size + moreMethods.count { it != null }
+
     private fun scanStoryPlayerAd(
         classLoader: ClassLoader,
     ): SymbolScanResult<StoryPlayerAdSymbols> {
@@ -693,7 +1018,17 @@ object BiliSymbolResolver {
             kotlinUnitField = if (rerankInvoke != null) unitField?.let(FieldDescriptor::of) else null,
             evidence = "feed=${feedGetItems != null},pager=${pagerMethods.size},rerank=${rerankInvoke != null && unitField != null}",
         )
-        return SymbolScanResult.Found(symbols, "StoryPlayerAd", symbols.evidence)
+        val hookPoints = listOf(
+            childHookPoint(HP_STORY_PLAYER_AD_FEED, feedGetItems != null, "feed getItems not found", "method=${feedGetItems?.name}"),
+            childHookPoint(HP_STORY_PLAYER_AD_PAGER, pagerMethods.isNotEmpty(), "pager list method not found", "methods=${pagerMethods.size}"),
+            childHookPoint(
+                HP_STORY_PLAYER_AD_RERANK,
+                rerankInvoke != null && unitField != null,
+                "rerank invoke/unit field not found",
+                "invoke=${rerankInvoke != null},unit=${unitField != null}",
+            ),
+        )
+        return SymbolScanResult.Found(symbols, "StoryPlayerAd", symbols.evidence, hookPoints)
     }
 
     private fun isStoryPagerListMethod(method: Method): Boolean =
@@ -774,7 +1109,21 @@ object BiliSymbolResolver {
             kotlinUnitField = if (hasRelateGameHook) unitField?.let(FieldDescriptor::of) else null,
             evidence = "proxy=$hasProxyHook,relateGame=$hasRelateGameHook",
         )
-        return SymbolScanResult.Found(symbols, "VideoDetailBannerAd", symbols.evidence)
+        val hookPoints = listOf(
+            childHookPoint(
+                HP_VIDEO_DETAIL_BANNER_PROXY,
+                hasProxyHook,
+                "proxy hook dependencies not found",
+                "method=${getVideoDetail != null},detail=${videoDetailType != null},underPlayer=${underPlayerType != null}",
+            ),
+            childHookPoint(
+                HP_VIDEO_DETAIL_BANNER_RELATE_GAME,
+                hasRelateGameHook,
+                "relate game view hook dependencies not found",
+                "ctor=${simpleViewEntryConstructor != null},create=${createViewEntry != null},bind=${bindToView != null},unit=${unitField != null}",
+            ),
+        )
+        return SymbolScanResult.Found(symbols, "VideoDetailBannerAd", symbols.evidence, hookPoints)
     }
 
     private fun scanCommentPicture(
@@ -848,7 +1197,17 @@ object BiliSymbolResolver {
             defaultWordMethods = defaultWordMethods.map(MethodDescriptor::of),
             evidence = "game=${gameMenuMethod != null},onViewCreated=${baseOnViewCreated != null},defaultWord=${defaultWordMethods.size}",
         )
-        return SymbolScanResult.Found(symbols, "HomeTopBarPurify", symbols.evidence)
+        val hookPoints = listOf(
+            childHookPoint(HP_HOME_TOP_BAR_GAME, gameMenuMethod != null, "game menu method not found"),
+            childHookPoint(HP_HOME_TOP_BAR_VIEW_CREATED, baseOnViewCreated != null, "base onViewCreated method not found"),
+            childHookPoint(
+                HP_HOME_TOP_BAR_DEFAULT_WORD,
+                defaultWordMethods.isNotEmpty(),
+                "default search word method not found",
+                "methods=${defaultWordMethods.size}",
+            ),
+        )
+        return SymbolScanResult.Found(symbols, "HomeTopBarPurify", symbols.evidence, hookPoints)
     }
 
     private fun scanBottomBar(
@@ -886,7 +1245,11 @@ object BiliSymbolResolver {
             resourceMethods = resourceMethods.map(MethodDescriptor::of),
             evidence = "parsers=${parserMethods.size},resources=${resourceMethods.size}",
         )
-        return SymbolScanResult.Found(symbols, "BottomBar", symbols.evidence)
+        val hookPoints = listOf(
+            optionalChildHookPoint(HP_BOTTOM_BAR_JSON_PARSER, parserMethods.isNotEmpty(), "json parser hook methods not found", "methods=${parserMethods.size}"),
+            optionalChildHookPoint(HP_BOTTOM_BAR_RESOURCE, resourceMethods.isNotEmpty(), "resource manager hook methods not found", "methods=${resourceMethods.size}"),
+        )
+        return SymbolScanResult.Found(symbols, "BottomBar", symbols.evidence, hookPoints)
     }
 
     private fun scanHomeRecommendFeed(
@@ -946,9 +1309,13 @@ object BiliSymbolResolver {
     private fun scanHomeComponentHide(
         classLoader: ClassLoader,
     ): SymbolScanResult<HomeComponentHideSymbols> {
-        val methods = BASE_HOME_FRAGMENT_CLASSES
+        val baseClasses = BASE_HOME_FRAGMENT_CLASSES
             .asSequence()
             .mapNotNull { classLoader.loadClassOrNull(it) }
+            .distinctBy { it.name }
+            .toList()
+        val methods = baseClasses
+            .asSequence()
             .flatMap { type ->
                 HOME_COMPONENT_LIFECYCLE_METHODS.asSequence().flatMap { methodName ->
                     type.allMethods().asSequence().filter { it.name == methodName }
@@ -956,12 +1323,37 @@ object BiliSymbolResolver {
             }
             .distinctBy(Method::toGenericString)
             .toList()
+        val componentCatalog = baseClasses
+            .asSequence()
+            .flatMap { it.declaredMethods.asSequence() }
+            .filter {
+                it.parameterCount == 0 &&
+                    List::class.java.isAssignableFrom(it.returnType) &&
+                    !Modifier.isStatic(it.modifiers) &&
+                    !Modifier.isAbstract(it.modifiers)
+            }
+            .distinctBy(Method::toGenericString)
+            .singleOrNull()
         if (methods.isEmpty()) return SymbolScanResult.Missing("base home fragment lifecycle methods not found")
         val symbols = HomeComponentHideSymbols(
             baseHomeFragmentMethods = methods.map(MethodDescriptor::of),
-            evidence = "baseLifecycle=${methods.size}",
+            componentCatalogMethod = componentCatalog?.let(MethodDescriptor::of),
+            evidence = "baseLifecycle=${methods.size},catalog=${componentCatalog != null}",
         )
-        return SymbolScanResult.Found(symbols, methods.joinToString("|") { it.declaringClass.name }, symbols.evidence)
+        val hookPoints = listOf(
+            childHookPoint(
+                HP_HOME_COMPONENT_HIDE_CATALOG,
+                componentCatalog != null,
+                "home component catalog list method not found",
+                "method=${componentCatalog?.name}",
+            ),
+        )
+        return SymbolScanResult.Found(
+            symbols,
+            methods.joinToString("|") { it.declaringClass.name },
+            symbols.evidence,
+            hookPoints,
+        )
     }
 
     private fun scanVideoComment(
@@ -979,23 +1371,57 @@ object BiliSymbolResolver {
             .asSequence()
             .mapNotNull { classLoader.loadClassOrNull(it) }
             .flatMap { type ->
-                type.declaredMethods.asSequence().filter { method ->
+                (sequenceOf(type) + type.declaredClasses.asSequence()).flatMap { it.declaredMethods.asSequence() }
+            }
+            .filter { method ->
+                method.returnType == Void.TYPE &&
+                    method.parameterCount == 1 &&
+                    !method.name.contains("lambda", ignoreCase = true) &&
+                    method.parameterTypes.firstOrNull()?.isCommentActionType() == true
+            }
+            .distinctBy(Method::toGenericString)
+            .toList()
+
+        val quickReplyDispatcherMethods = COMMENT_VIEW_MODEL_CLASSES
+            .asSequence()
+            .mapNotNull { classLoader.loadClassOrNull(it) }
+            .flatMap { type ->
+                type.declaredClasses.asSequence().flatMap { it.declaredMethods.asSequence() }
+            }
+            .filter { method ->
+                method.returnType == Void.TYPE &&
+                    method.parameterCount == 1 &&
+                    !method.name.contains("lambda", ignoreCase = true) &&
+                    method.parameterTypes.firstOrNull()?.isCommentActionBaseType() == true
+            }
+            .distinctBy(Method::toGenericString)
+            .toList()
+
+        val quickReplyActionBaseMethods = COMMENT_ACTION_BASE_CLASSES
+            .asSequence()
+            .mapNotNull { classLoader.loadClassOrNull(it) }
+            .flatMap { type ->
+                type.allMethods().filter { method ->
                     method.returnType == Void.TYPE &&
-                        method.parameterCount == 1 &&
-                        !method.name.contains("lambda", ignoreCase = true) &&
-                        method.name in QUICK_REPLY_METHOD_NAMES &&
-                        method.parameterTypes.firstOrNull()?.isCommentActionType() == true
+                        method.parameterCount == 2 &&
+                        method.parameterTypes[0].isInterface &&
+                        method.parameterTypes[1] == Boolean::class.javaPrimitiveType &&
+                        !Modifier.isStatic(method.modifiers)
                 }
             }
             .distinctBy(Method::toGenericString)
             .toList()
+
+        val quickReplyActionMethods = (quickReplyViewModelMethods + quickReplyDispatcherMethods + quickReplyActionBaseMethods)
+            .distinctBy(Method::toGenericString)
 
         val quickReplyDialogMethods = QUICK_REPLY_DIALOG_COLLECTOR_CLASSES
             .asSequence()
             .mapNotNull { classLoader.loadClassOrNull(it) }
             .flatMap { type ->
                 type.declaredMethods.asSequence().filter { method ->
-                    method.parameterCount == 2 &&
+                    method.returnType == Void.TYPE &&
+                        method.parameterCount == 2 &&
                         !method.name.contains("lambda", ignoreCase = true) &&
                         method.parameterTypes.firstOrNull()?.isQuickReplyDialogIntentType() == true &&
                         method.parameterTypes.getOrNull(1)?.let { Continuation::class.java.isAssignableFrom(it) } == true
@@ -1010,10 +1436,9 @@ object BiliSymbolResolver {
             .flatMap { type ->
                 type.declaredMethods.asSequence().filter { method ->
                     method.returnType == Void.TYPE &&
-                        method.parameterCount == 1 &&
+                        method.parameterCount >= 1 &&
                         !method.name.contains("lambda", ignoreCase = true) &&
-                        method.name in VOTE_WIDGET_METHOD_NAMES &&
-                        method.parameterTypes.firstOrNull().isVoteWidgetPayload()
+                        method.name in VOTE_WIDGET_METHOD_NAMES
                 }
             }
             .distinctBy(Method::toGenericString)
@@ -1025,10 +1450,9 @@ object BiliSymbolResolver {
             .flatMap { type ->
                 type.declaredMethods.asSequence().filter { method ->
                     method.returnType == Void.TYPE &&
-                        method.parameterCount == 1 &&
+                        method.parameterCount >= 1 &&
                         !method.name.contains("lambda", ignoreCase = true) &&
-                        method.name in FOLLOW_WIDGET_METHOD_NAMES &&
-                        method.parameterTypes.firstOrNull().isFollowWidgetPayload()
+                        method.name in FOLLOW_WIDGET_METHOD_NAMES
                 }
             }
             .distinctBy(Method::toGenericString)
@@ -1040,7 +1464,7 @@ object BiliSymbolResolver {
             .flatMap { type ->
                 type.declaredMethods.asSequence().filter { method ->
                     method.returnType == Void.TYPE &&
-                        method.parameterCount == 1 &&
+                        method.parameterCount >= 1 &&
                         !method.name.contains("lambda", ignoreCase = true) &&
                         method.name in HEADER_DECORATIVE_METHOD_NAMES &&
                         List::class.java.isAssignableFrom(method.parameterTypes[0])
@@ -1063,14 +1487,14 @@ object BiliSymbolResolver {
             .distinctBy(Method::toGenericString)
             .toList()
 
-        val total = disableCommentConstructors.size + quickReplyViewModelMethods.size + quickReplyDialogMethods.size +
+        val total = disableCommentConstructors.size + quickReplyActionMethods.size + quickReplyDialogMethods.size +
             voteWidgetMethods.size + followWidgetMethods.size + headerDecorativeMethods.size +
             (if (searchUrlsMethod != null) 1 else 0) + emptyPageHooks.size + mainListOnNextMethods.size
         if (total == 0) return SymbolScanResult.Missing("video comment hook points not found")
 
         val symbols = VideoCommentSymbols(
             disableCommentConstructors = disableCommentConstructors,
-            quickReplyViewModelMethods = quickReplyViewModelMethods.map(MethodDescriptor::of),
+            quickReplyViewModelMethods = quickReplyActionMethods.map(MethodDescriptor::of),
             quickReplyDialogMethods = quickReplyDialogMethods.map(MethodDescriptor::of),
             voteWidgetMethods = voteWidgetMethods.map(MethodDescriptor::of),
             followWidgetMethods = followWidgetMethods.map(MethodDescriptor::of),
@@ -1078,9 +1502,24 @@ object BiliSymbolResolver {
             searchUrlsMethod = searchUrlsMethod?.let(MethodDescriptor::of),
             emptyPageHooks = emptyPageHooks,
             mainListOnNextMethods = mainListOnNextMethods.map(MethodDescriptor::of),
-            evidence = "constructors=${disableCommentConstructors.size},quick=${quickReplyViewModelMethods.size + quickReplyDialogMethods.size},widgets=${voteWidgetMethods.size + followWidgetMethods.size + headerDecorativeMethods.size},empty=${emptyPageHooks.size},main=${mainListOnNextMethods.size}",
+            evidence = "constructors=${disableCommentConstructors.size},quick=${quickReplyActionMethods.size + quickReplyDialogMethods.size},widgets=${voteWidgetMethods.size + followWidgetMethods.size + headerDecorativeMethods.size},empty=${emptyPageHooks.size},main=${mainListOnNextMethods.size}",
         )
-        return SymbolScanResult.Found(symbols, "VideoComment", symbols.evidence)
+        val quickReplyCount = quickReplyActionMethods.size + quickReplyDialogMethods.size
+        val widgetCount = voteWidgetMethods.size + followWidgetMethods.size + headerDecorativeMethods.size
+        val hookPoints = listOf(
+            childHookPoint(
+                HP_VIDEO_COMMENT_DISABLE,
+                disableCommentConstructors.isNotEmpty(),
+                "disable comment constructor hook not found",
+                "constructors=${disableCommentConstructors.size}",
+            ),
+            childHookPoint(HP_VIDEO_COMMENT_QUICK_REPLY, quickReplyCount > 0, "quick reply hook methods not found", "methods=$quickReplyCount"),
+            childHookPoint(HP_VIDEO_COMMENT_WIDGETS, widgetCount > 0, "comment widget hook methods not found", "methods=$widgetCount"),
+            childHookPoint(HP_VIDEO_COMMENT_SEARCH, searchUrlsMethod != null, "comment search url method not found"),
+            childHookPoint(HP_VIDEO_COMMENT_EMPTY_PAGE, emptyPageHooks.isNotEmpty(), "empty page hook points not found", "hooks=${emptyPageHooks.size}"),
+            childHookPoint(HP_VIDEO_COMMENT_MAIN_LIST, mainListOnNextMethods.isNotEmpty(), "main list onNext hook methods not found", "methods=${mainListOnNextMethods.size}"),
+        )
+        return SymbolScanResult.Found(symbols, "VideoComment", symbols.evidence, hookPoints)
     }
 
     private fun scanVideoCommentEmptyPageHooks(classLoader: ClassLoader): List<VideoCommentEmptyPageSymbols> {
@@ -1143,7 +1582,22 @@ object BiliSymbolResolver {
             cardStateMethods = cardState.map(MethodDescriptor::of),
             evidence = "play=${playViewMethods.size},core=${playerCoreCurrent.size}/${playerCoreState.size},card=${cardCurrent.size}/${cardState.size}",
         )
-        return SymbolScanResult.Found(symbols, "SkipVideoAd", symbols.evidence)
+        val hookPoints = listOf(
+            childHookPoint(HP_SKIP_VIDEO_AD_PLAY_VIEW, playViewMethods.isNotEmpty(), "play view hook methods not found", "methods=${playViewMethods.size}"),
+            optionalChildHookPoint(
+                HP_SKIP_VIDEO_AD_PLAYER_CORE,
+                playerCoreCurrent.isNotEmpty() && playerCoreState.isNotEmpty(),
+                "player core position/state methods not found",
+                "current=${playerCoreCurrent.size},state=${playerCoreState.size}",
+            ),
+            optionalChildHookPoint(
+                HP_SKIP_VIDEO_AD_CARD,
+                cardCurrent.isNotEmpty() && cardState.isNotEmpty(),
+                "card player position/state methods not found",
+                "current=${cardCurrent.size},state=${cardState.size}",
+            ),
+        )
+        return SymbolScanResult.Found(symbols, "SkipVideoAd", symbols.evidence, hookPoints)
     }
 
     private fun scanSkipVideoAdProgress(
@@ -1181,7 +1635,12 @@ object BiliSymbolResolver {
             panelWidgetKtClassName = panelWidget?.name,
             evidence = "draw=${progressOnDraw != null},story=${storyOnStart.size},inline=${inlineUpdate.size},panel=${panelWidget != null}",
         )
-        return SymbolScanResult.Found(symbols, "SkipVideoAdProgress", symbols.evidence)
+        val hookPoints = listOf(
+            childHookPoint(HP_SKIP_VIDEO_AD_PROGRESS_DRAW, progressOnDraw != null, "progress onDraw hook not found"),
+            childHookPoint(HP_SKIP_VIDEO_AD_PROGRESS_STORY, storyOnStart.isNotEmpty(), "story seek bar onStart hook not found", "methods=${storyOnStart.size}"),
+            childHookPoint(HP_SKIP_VIDEO_AD_PROGRESS_INLINE, inlineUpdate.isNotEmpty(), "inline progress update hook not found", "methods=${inlineUpdate.size}"),
+        )
+        return SymbolScanResult.Found(symbols, "SkipVideoAdProgress", symbols.evidence, hookPoints)
     }
 
     private fun scanSkipVideoAdAutoLike(
@@ -1211,7 +1670,22 @@ object BiliSymbolResolver {
             geminiLikeWidgetClassName = geminiLikeWidget?.name,
             evidence = "detail=${detailLikeInflate != null},detailOwner=${detailLikeStateOwner != null},storyClasses=${storyWidgetClasses.size},storyOwner=${storyActionOwner != null},storyBind=${storyBindMethods.size},gemini=${geminiLikeWidget != null}",
         )
-        return SymbolScanResult.Found(symbols, "SkipVideoAdAutoLike", symbols.evidence)
+        val hookPoints = listOf(
+            childHookPoint(
+                HP_SKIP_VIDEO_AD_AUTO_LIKE_DETAIL,
+                detailLikeInflate != null && detailLikeStateOwner != null,
+                "detail like inflate/state owner not found",
+                "inflate=${detailLikeInflate != null},owner=${detailLikeStateOwner != null}",
+            ),
+            childHookPoint(
+                HP_SKIP_VIDEO_AD_AUTO_LIKE_STORY,
+                storyWidgetClasses.isNotEmpty() && storyBindMethods.isNotEmpty(),
+                "story like widget/bind hook not found",
+                "widgets=${storyWidgetClasses.size},owner=${storyActionOwner != null},bind=${storyBindMethods.size}",
+            ),
+            childHookPoint(HP_SKIP_VIDEO_AD_AUTO_LIKE_GEMINI, geminiLikeWidget != null, "gemini like widget class not found"),
+        )
+        return SymbolScanResult.Found(symbols, "SkipVideoAdAutoLike", symbols.evidence, hookPoints)
     }
 
     private fun scanChronosPromotion(
@@ -1355,7 +1829,8 @@ object BiliSymbolResolver {
             }
         }
 
-        addClass(CHRONOS_ID_AD_DANMAKU_DELEGATE, AD_DANMAKU_DELEGATE)?.let { delegate ->
+        val adDanmakuDelegate = addClass(CHRONOS_ID_AD_DANMAKU_DELEGATE, AD_DANMAKU_DELEGATE)
+        adDanmakuDelegate?.let { delegate ->
             addMethods(
                 CHRONOS_METHOD_AD_DANMAKU_FEED,
                 delegate.allMethods().filter {
@@ -1364,7 +1839,8 @@ object BiliSymbolResolver {
                 },
             )
         }
-        addClass(CHRONOS_ID_INTERACT_LAYER_SERVICE, INTERACT_LAYER_SERVICE)?.let { service ->
+        val interactLayerService = addClass(CHRONOS_ID_INTERACT_LAYER_SERVICE, INTERACT_LAYER_SERVICE)
+        interactLayerService?.let { service ->
             if (viewProgressDetail != null) {
                 addMethods(
                     CHRONOS_METHOD_INTERACT_LAYER_VIEW_PROGRESS,
@@ -1376,7 +1852,8 @@ object BiliSymbolResolver {
                 )
             }
         }
-        addClass(CHRONOS_ID_GEMINI_OPERATION_WIDGET, GEMINI_OPERATION_WIDGET)?.let { widget ->
+        val geminiOperationWidget = addClass(CHRONOS_ID_GEMINI_OPERATION_WIDGET, GEMINI_OPERATION_WIDGET)
+        geminiOperationWidget?.let { widget ->
             addMethods(
                 CHRONOS_METHOD_GEMINI_OPERATION_RENDER,
                 widget.allMethods().filter {
@@ -1386,7 +1863,8 @@ object BiliSymbolResolver {
                 },
             )
         }
-        addClass(CHRONOS_ID_GEMINI_OPERATION_OBSERVER, GEMINI_OPERATION_OBSERVER)?.let { observer ->
+        val geminiOperationObserver = addClass(CHRONOS_ID_GEMINI_OPERATION_OBSERVER, GEMINI_OPERATION_OBSERVER)
+        geminiOperationObserver?.let { observer ->
             if (viewProgressDetail != null) {
                 addMethods(
                     CHRONOS_METHOD_GEMINI_OPERATION_UPDATE,
@@ -1403,12 +1881,223 @@ object BiliSymbolResolver {
         if (totalMethods == 0) {
             return SymbolScanResult.Missing("chronos promotion hook points not found")
         }
+        val childHookPoints = buildChronosPromotionHookPointStatus(
+            methodGroups = methodGroups,
+            rpcHandler = rpcHandler,
+            updateDetailStateRequest = updateDetailStateRequest,
+            openUrlRequest = openUrlRequest,
+            adDanmakuEventRequest = adDanmakuEventRequest,
+            notifyCommercialEventRequest = notifyCommercialEventRequest,
+            senderType = senderType,
+            addCustomRequest = addCustomRequest,
+            dmViewChangeRequest = dmViewChangeRequest,
+            dmViewReply = dmViewReply,
+            commandDanmakuSentRequest = commandDanmakuSentRequest,
+            commandDmListRequest = commandDmListRequest,
+            commandDmListResponse = commandDmListResponse,
+            function2Type = function2Type,
+            remoteHandler = remoteHandler,
+            getViewProgressRequest = getViewProgressRequest,
+            getDmViewRequest = getDmViewRequest,
+            viewProgressReply = viewProgressReply,
+            uniteViewProgressReply = uniteViewProgressReply,
+            videoDetailStateChangeRequest = videoDetailStateChangeRequest,
+            viewProgressDetail = viewProgressDetail,
+            adDanmakuDelegate = adDanmakuDelegate,
+            interactLayerService = interactLayerService,
+            geminiOperationWidget = geminiOperationWidget,
+            geminiOperationObserver = geminiOperationObserver,
+        )
         val symbols = ChronosPromotionSymbols(
             classSymbols = classes.distinctBy { it.id },
             methodGroups = methodGroups.distinctBy { it.id },
             evidence = "classes=${classes.distinctBy { it.id }.size},methodGroups=${methodGroups.size},methods=$totalMethods",
         )
-        return SymbolScanResult.Found(symbols, "ChronosPromotion", symbols.evidence)
+        return SymbolScanResult.Found(symbols, "ChronosPromotion", symbols.evidence, childHookPoints)
+    }
+
+    private fun buildChronosPromotionHookPointStatus(
+        methodGroups: List<NamedMethodGroup>,
+        rpcHandler: Class<*>?,
+        updateDetailStateRequest: Class<*>?,
+        openUrlRequest: Class<*>?,
+        adDanmakuEventRequest: Class<*>?,
+        notifyCommercialEventRequest: Class<*>?,
+        senderType: Class<*>?,
+        addCustomRequest: Class<*>?,
+        dmViewChangeRequest: Class<*>?,
+        dmViewReply: Class<*>?,
+        commandDanmakuSentRequest: Class<*>?,
+        commandDmListRequest: Class<*>?,
+        commandDmListResponse: Class<*>?,
+        function2Type: Class<*>?,
+        remoteHandler: Class<*>?,
+        getViewProgressRequest: Class<*>?,
+        getDmViewRequest: Class<*>?,
+        viewProgressReply: Class<*>?,
+        uniteViewProgressReply: Class<*>?,
+        videoDetailStateChangeRequest: Class<*>?,
+        viewProgressDetail: Class<*>?,
+        adDanmakuDelegate: Class<*>?,
+        interactLayerService: Class<*>?,
+        geminiOperationWidget: Class<*>?,
+        geminiOperationObserver: Class<*>?,
+    ): List<HookPointStatus> {
+        fun methodCount(id: String): Int =
+            methodGroups.firstOrNull { it.id == id }?.methods?.size ?: 0
+
+        fun status(id: String, methodId: String, missing: List<String>, evidence: String): HookPointStatus {
+            val methods = methodCount(methodId)
+            return when {
+                missing.isNotEmpty() -> HookPointStatus.missing(id, "fail closed: ${missing.joinToString()}")
+                methods == 0 -> HookPointStatus.missing(id, "fail closed: method group $methodId not found")
+                else -> HookPointStatus.found(id, "ChronosPromotion.$methodId", "methods=$methods,$evidence")
+            }
+        }
+
+        val receiveMissing = buildList {
+            if (rpcHandler == null) add(CHRONOS_ID_RPC_HANDLER)
+            if (updateDetailStateRequest == null) add(CHRONOS_ID_UPDATE_DETAIL_STATE_REQUEST)
+            if (openUrlRequest == null) add(CHRONOS_ID_OPEN_URL_REQUEST)
+            if (adDanmakuEventRequest == null) add(CHRONOS_ID_AD_DANMAKU_EVENT_REQUEST)
+            if (notifyCommercialEventRequest == null) add(CHRONOS_ID_NOTIFY_COMMERCIAL_EVENT_REQUEST)
+        }
+        val senderMissing = buildList {
+            if (senderType == null) add(CHRONOS_ID_MESSAGE_SENDER)
+            if (addCustomRequest == null) add(CHRONOS_ID_ADD_CUSTOM_DANMAKU_REQUEST)
+            if (commandDanmakuSentRequest == null) add(CHRONOS_ID_COMMAND_DANMAKU_SENT_REQUEST)
+            if (dmViewChangeRequest == null) add(CHRONOS_ID_DM_VIEW_CHANGE_REQUEST)
+            if (dmViewReply == null) add(CHRONOS_ID_DM_VIEW_REPLY)
+        }
+        val commandDmListMissing = buildList {
+            if (senderType == null) add(CHRONOS_ID_MESSAGE_SENDER)
+            if (commandDmListRequest == null) add(CHRONOS_ID_COMMAND_DM_LIST_REQUEST)
+            if (commandDmListResponse == null) add(CHRONOS_ID_COMMAND_DM_LIST_RESPONSE)
+            if (function2Type == null) add(CHRONOS_ID_FUNCTION2)
+        }
+        val localViewProgressMissing = buildList {
+            if (rpcHandler == null) add(CHRONOS_ID_RPC_HANDLER)
+            if (getViewProgressRequest == null) add(CHRONOS_ID_GET_VIEW_PROGRESS_REQUEST)
+            if (function2Type == null) add(CHRONOS_ID_FUNCTION2)
+            if (viewProgressReply == null && uniteViewProgressReply == null) add("$CHRONOS_ID_VIEW_PROGRESS_REPLY|$CHRONOS_ID_UNITE_VIEW_PROGRESS_REPLY")
+        }
+        val localDmViewMissing = buildList {
+            if (rpcHandler == null) add(CHRONOS_ID_RPC_HANDLER)
+            if (getDmViewRequest == null) add(CHRONOS_ID_GET_DM_VIEW_REQUEST)
+            if (dmViewReply == null) add(CHRONOS_ID_DM_VIEW_REPLY)
+            if (function2Type == null) add(CHRONOS_ID_FUNCTION2)
+        }
+        val remoteVideoDetailMissing = buildList {
+            if (remoteHandler == null) add(CHRONOS_ID_REMOTE_HANDLER)
+            if (videoDetailStateChangeRequest == null) add(CHRONOS_ID_VIDEO_DETAIL_STATE_CHANGE_REQUEST)
+        }
+        val remoteViewProgressMissing = buildList {
+            if (remoteHandler == null) add(CHRONOS_ID_REMOTE_HANDLER)
+            if (viewProgressDetail == null) add(CHRONOS_ID_VIEW_PROGRESS_DETAIL)
+        }
+        val remoteHandlerMissing = buildList {
+            if (remoteHandler == null) add(CHRONOS_ID_REMOTE_HANDLER)
+        }
+        val adDanmakuMissing = buildList {
+            if (adDanmakuDelegate == null) add(CHRONOS_ID_AD_DANMAKU_DELEGATE)
+        }
+        val interactLayerMissing = buildList {
+            if (interactLayerService == null) add(CHRONOS_ID_INTERACT_LAYER_SERVICE)
+            if (viewProgressDetail == null) add(CHRONOS_ID_VIEW_PROGRESS_DETAIL)
+        }
+        val geminiRenderMissing = buildList {
+            if (geminiOperationWidget == null) add(CHRONOS_ID_GEMINI_OPERATION_WIDGET)
+        }
+        val geminiUpdateMissing = buildList {
+            if (geminiOperationObserver == null) add(CHRONOS_ID_GEMINI_OPERATION_OBSERVER)
+            if (viewProgressDetail == null) add(CHRONOS_ID_VIEW_PROGRESS_DETAIL)
+        }
+        return listOf(
+            status(
+                id = HP_CHRONOS_RPC_RECEIVE,
+                methodId = CHRONOS_METHOD_RPC_RECEIVE,
+                missing = receiveMissing,
+                evidence = "requests=${4 - receiveMissing.count { it != CHRONOS_ID_RPC_HANDLER }}/4",
+            ),
+            status(
+                id = HP_CHRONOS_LOCAL_VIEW_PROGRESS,
+                methodId = CHRONOS_METHOD_LOCAL_VIEW_PROGRESS,
+                missing = localViewProgressMissing,
+                evidence = "reply=${viewProgressReply != null},uniteReply=${uniteViewProgressReply != null}",
+            ),
+            status(
+                id = HP_CHRONOS_LOCAL_DM_VIEW,
+                methodId = CHRONOS_METHOD_LOCAL_DM_VIEW,
+                missing = localDmViewMissing,
+                evidence = "request=${getDmViewRequest != null},reply=${dmViewReply != null}",
+            ),
+            status(
+                id = HP_CHRONOS_MESSAGE_SENDER,
+                methodId = CHRONOS_METHOD_MESSAGE_SEND,
+                missing = senderMissing,
+                evidence = "requests=${4 - senderMissing.count { it != CHRONOS_ID_MESSAGE_SENDER }}/4",
+            ),
+            status(
+                id = HP_CHRONOS_COMMAND_DM_LIST,
+                methodId = CHRONOS_METHOD_COMMAND_DM_LIST,
+                missing = commandDmListMissing,
+                evidence = "request=${commandDmListRequest != null},response=${commandDmListResponse != null}",
+            ),
+            status(
+                id = HP_CHRONOS_REMOTE_VIDEO_DETAIL_STATE,
+                methodId = CHRONOS_METHOD_REMOTE_VIDEO_DETAIL_STATE,
+                missing = remoteVideoDetailMissing,
+                evidence = "request=${videoDetailStateChangeRequest != null}",
+            ),
+            status(
+                id = HP_CHRONOS_REMOTE_VIEW_PROGRESS,
+                methodId = CHRONOS_METHOD_REMOTE_VIEW_PROGRESS,
+                missing = remoteViewProgressMissing,
+                evidence = "detail=${viewProgressDetail != null}",
+            ),
+            status(
+                id = HP_CHRONOS_REMOTE_COMMAND_DANMAKU,
+                methodId = CHRONOS_METHOD_REMOTE_COMMAND_DANMAKU,
+                missing = remoteHandlerMissing,
+                evidence = "remoteHandler=${remoteHandler != null}",
+            ),
+            status(
+                id = HP_CHRONOS_REMOTE_ADD_DANMAKU,
+                methodId = CHRONOS_METHOD_REMOTE_ADD_DANMAKU,
+                missing = remoteHandlerMissing,
+                evidence = "remoteHandler=${remoteHandler != null}",
+            ),
+            status(
+                id = HP_CHRONOS_REMOTE_AD_FLOAT_EXPOSURE,
+                methodId = CHRONOS_METHOD_REMOTE_AD_FLOAT_EXPOSURE,
+                missing = remoteHandlerMissing,
+                evidence = "remoteHandler=${remoteHandler != null}",
+            ),
+            status(
+                id = HP_CHRONOS_AD_DANMAKU_FEED,
+                methodId = CHRONOS_METHOD_AD_DANMAKU_FEED,
+                missing = adDanmakuMissing,
+                evidence = "delegate=${adDanmakuDelegate != null}",
+            ),
+            status(
+                id = HP_CHRONOS_INTERACT_LAYER_VIEW_PROGRESS,
+                methodId = CHRONOS_METHOD_INTERACT_LAYER_VIEW_PROGRESS,
+                missing = interactLayerMissing,
+                evidence = "service=${interactLayerService != null},detail=${viewProgressDetail != null}",
+            ),
+            status(
+                id = HP_CHRONOS_GEMINI_OPERATION_RENDER,
+                methodId = CHRONOS_METHOD_GEMINI_OPERATION_RENDER,
+                missing = geminiRenderMissing,
+                evidence = "widget=${geminiOperationWidget != null}",
+            ),
+            status(
+                id = HP_CHRONOS_GEMINI_OPERATION_UPDATE,
+                methodId = CHRONOS_METHOD_GEMINI_OPERATION_UPDATE,
+                missing = geminiUpdateMissing,
+                evidence = "observer=${geminiOperationObserver != null},detail=${viewProgressDetail != null}",
+            ),
+        )
     }
 
     private fun hasDetailStateGetterMethods(requestType: Class<*>, getters: List<String>): Boolean =
@@ -1452,37 +2141,22 @@ object BiliSymbolResolver {
                 simpleName.contains("Intent", ignoreCase = true))
     }
 
+    private fun Class<*>.isCommentActionBaseType(): Boolean {
+        if (name == "Kj.AbstractC8070c") return true
+        if (simpleName.contains("Action", ignoreCase = true) && name.startsWith("Kj.")) return true
+        return allMethods().any { method ->
+            method.name == "a" &&
+                method.returnType == Void.TYPE &&
+                method.parameterCount == 2 &&
+                method.parameterTypes[0].isInterface &&
+                method.parameterTypes[1] == Boolean::class.javaPrimitiveType
+        }
+    }
+
     private fun Class<*>.isQuickReplyDialogIntentType(): Boolean {
         val className = name
         return className.endsWith("PublishDialogIntent", ignoreCase = true) ||
             className.contains("PublishDialogIntent", ignoreCase = true)
-    }
-
-    private fun Class<*>?.isVoteWidgetPayload(): Boolean {
-        val type = this ?: return false
-        val simpleName = type.simpleName
-        val className = type.name
-        return simpleName.isNotBlank() && (
-            simpleName.contains("Vote", ignoreCase = true) ||
-                simpleName.contains("Reply", ignoreCase = true) ||
-                simpleName.contains("Item", ignoreCase = true) ||
-                simpleName.contains("Data", ignoreCase = true) ||
-                className.contains("vote", ignoreCase = true) ||
-                className.contains("reply", ignoreCase = true)
-            )
-    }
-
-    private fun Class<*>?.isFollowWidgetPayload(): Boolean {
-        val type = this ?: return false
-        val simpleName = type.simpleName
-        val className = type.name
-        return simpleName.isNotBlank() && (
-            simpleName.contains("Follow", ignoreCase = true) ||
-                simpleName.contains("User", ignoreCase = true) ||
-                simpleName.contains("Item", ignoreCase = true) ||
-                simpleName.contains("Data", ignoreCase = true) ||
-                className.contains("follow", ignoreCase = true)
-            )
     }
 
     private fun Class<*>.isPlayViewRequestType(): Boolean {
@@ -1602,36 +2276,31 @@ object BiliSymbolResolver {
         log: (String, Throwable?) -> Unit,
     ) {
         runCatching {
-            val issues = symbols.hookPoints.filter { it.state == HookPointState.MISSING || it.state == HookPointState.ERROR }
-            val optional = symbols.hookPoints.filter { it.state == HookPointState.OPTIONAL }
+            val notFound = symbols.hookPoints.filter { it.state == HookPointState.MISSING || it.state == HookPointState.ERROR }
+            val notFoundPreview = notFound.take(3).joinToString { it.id.substringAfterLast('.') }
             val summary = when {
-                issues.isEmpty() && symbols.scanErrors.isEmpty() ->
+                notFound.isEmpty() && symbols.scanErrors.isEmpty() ->
                     "当前扫描结果：未发现缺失方法（$source）"
                 symbols.scanErrors.isEmpty() ->
-                    "当前扫描结果：${issues.size} 个 HookPoint 缺失或异常（$source）"
+                    "当前扫描结果：${notFound.size} 个 HookPoint 异常（$source）${
+                        if (notFoundPreview.isBlank()) "" else "：$notFoundPreview"
+                    }"
                 else ->
-                    "当前扫描结果：${issues.size} 个 HookPoint 缺失或异常，${symbols.scanErrors.size} 个扫描错误（$source）"
+                    "当前扫描结果：${notFound.size} 个 HookPoint 异常，${symbols.scanErrors.size} 个扫描错误（$source）"
             }
             val report = buildString {
                 appendLine("来源：$source")
                 appendLine("缓存指纹：${symbols.fingerprint}")
                 appendLine("schema=${symbols.cacheSchemaVersion}, rule=${symbols.dexKitRuleVersion}")
-                if (issues.isEmpty()) {
-                    appendLine("未发现 MISSING/ERROR HookPoint。")
+                if (notFound.isEmpty()) {
+                    appendLine("未发现异常 HookPoint。")
                 } else {
-                    appendLine("未找到或异常的 HookPoint：")
-                    issues.forEach { status ->
+                    appendLine("异常的 HookPoint：")
+                    notFound.forEach { status ->
                         appendLine("- ${status.id}: ${status.state.name}")
                         appendLine("  missing=${status.missing}")
                         if (status.target != "-") appendLine("  target=${status.target}")
                         if (status.evidence != "-") appendLine("  evidence=${status.evidence}")
-                    }
-                }
-                if (optional.isNotEmpty()) {
-                    appendLine("可选未安装的 HookPoint：")
-                    optional.forEach { status ->
-                        appendLine("- ${status.id}: ${status.state.name}")
-                        appendLine("  reason=${status.missing}")
                     }
                 }
                 if (symbols.scanErrors.isNotEmpty()) {
@@ -1705,6 +2374,61 @@ object BiliSymbolResolver {
         "com.bilibili.app.preferences.settingWide.CornerPreference",
         "tv.danmaku.p9138bili.widget.preference.BLPreference",
         "androidx.preference.Preference",
+    )
+
+    private const val SPLASH_GSON_CLASS = "com.google.gson.Gson"
+    private val SPLASH_FAST_JSON_CLASSES = arrayOf(
+        "com.alibaba.fastjson.JSON",
+        "com.alibaba.fastjson2.JSON",
+    )
+    private val SPLASH_FAST_JSON_PARSE_METHODS = setOf("parse", "parseObject")
+    private val SPLASH_KOTLINX_JSON_CLASSES = arrayOf(
+        "kotlinx.serialization.json.Json",
+        "kotlinx.serialization.p7923json.AbstractC137025Json",
+    )
+
+    private const val SHARE_LEGACY_RESULT = "com.bilibili.lib.sharewrapper.online.api.ShareClickResult"
+    private val SHARE_CONTENT_CLASSES = arrayOf(
+        "kntr.common.share.domain.v1.ShareContent",
+        "p7645kntr.common.share.domain.p7866v1.ShareContent",
+    )
+    private val SHARE_BILI_CONTENT_CLASSES = arrayOf(
+        "kntr.common.share.domain.v1.ShareBiliContent",
+        "p7645kntr.common.share.domain.p7866v1.ShareBiliContent",
+    )
+    private val SHARE_COPY_CONTENT_CLASSES = arrayOf(
+        "kntr.common.share.common.handler.copy.b",
+        "p7645kntr.common.share.common.handler.p7848copy.C134543b",
+    )
+    private val SHARE_COPY_UTILITY_CLASSES = arrayOf(
+        "kntr.common.share.common.handler.copy.a",
+        "p7645kntr.common.share.common.handler.p7848copy.C134542a",
+    )
+
+    private val REWARD_ACTIVITY_CLASSES = arrayOf(
+        "com.bilibili.ad.reward.activity.BaseRewardAdActivity",
+        "com.bilibili.ad.reward.RewardAdActivity",
+    )
+    private const val REWARD_HEADER_VIEW = "com.bilibili.ad.reward.view.header.RewardAdHeaderView"
+    private const val REWARD_COUNT_DOWN_TEXT_VIEW = "com.bilibili.ad.reward.view.header.CountDownTextView"
+    private val REWARD_JUMP_CLOCK_CLASSES = arrayOf("Ke.m", "Pe.k")
+
+    private val TRY_FREE_NEED_TRIAL_CLASSES = arrayOf(
+        "com.bapis.bilibili.pgc.gateway.player.v2.SceneControl",
+        "com.bapis.bilibili.playershared.VideoVod",
+    )
+    private val TRY_FREE_STREAM_INFO_CLASSES = arrayOf(
+        "com.bapis.bilibili.app.playurl.v1.StreamInfo",
+        "com.bapis.bilibili.playershared.StreamInfo",
+    )
+    private val TEENAGERS_MODE_ACTIVITIES = arrayOf(
+        "com.bilibili.app.preferences.TeenagersModeDialogActivity",
+        "com.bilibili.p4439app.preferences.TeenagersModeDialogActivity",
+        "tv.danmaku.bili.ui.teenagersmode.TeenagersModeDialogActivity",
+        "com.bilibili.teenagersmode.ui.TeenagersModeDialogActivity",
+        "com.bilibili.teenagersmode.p6010ui.TeenagersModeActivity",
+        "com.bilibili.teenagersmode.ui.TeenagersModeActivity",
+        "com.bilibili.teenagersmode.osteen.OSTeensParentControlRedirectActivity",
     )
 
     private val MINE_FRAGMENT_CLASS_NAMES = listOf(
@@ -1809,6 +2533,10 @@ object BiliSymbolResolver {
         "com.bilibili.app.comment3.viewmodel.CommentViewModel",
         "com.bilibili.p4439app.comment3.viewmodel.CommentViewModel",
     )
+    private val COMMENT_ACTION_BASE_CLASSES = arrayOf(
+        "Kj.AbstractC8070c",
+        "Kj.c",
+    )
     private val QUICK_REPLY_DIALOG_COLLECTOR_CLASSES = arrayOf(
         "com.bilibili.app.comment3.ui.CommentContainerImpl\$attachRepository\$5",
         "com.bilibili.p4439app.comment3.p4518ui.CommentContainerImpl\$attachRepository\$5",
@@ -1853,10 +2581,9 @@ object BiliSymbolResolver {
         "com.bapis.bilibili.p4311main.community.reply.p4312v1.ReplyMossKtxKt\$suspendMainList\$\$inlined\$suspendCall\$1",
         "com.bapis.bilibili.p4311main.community.reply.p4312v1.KReplyMoss\$mainList\$\$inlined\$suspendCall\$2",
     )
-    private val QUICK_REPLY_METHOD_NAMES = setOf("dispatchAction", "onAction", "submitAction")
-    private val VOTE_WIDGET_METHOD_NAMES = setOf("setData", "bindData", "update", "refresh", "bind", "onBind")
-    private val FOLLOW_WIDGET_METHOD_NAMES = setOf("setData", "bindData", "update", "refresh", "bind", "onBind")
-    private val HEADER_DECORATIVE_METHOD_NAMES = setOf("setData", "bindData", "update", "refresh", "submitList")
+    private val VOTE_WIDGET_METHOD_NAMES = setOf("a", "setData", "setVoteData", "bindData", "update", "refresh", "bind", "onBind")
+    private val FOLLOW_WIDGET_METHOD_NAMES = setOf("W", "setData", "bindData", "update", "refresh", "bind", "onBind")
+    private val HEADER_DECORATIVE_METHOD_NAMES = setOf("a", "setData", "bindData", "update", "refresh", "submitList")
     private const val PLAYER_CORE_SERVICE_INTERFACE = "tv.danmaku.biliplayerv2.service.IPlayerCoreService"
     private const val CARD_PLAYER_CONTEXT_INTERFACE = "tv.danmaku.video.bilicardplayer.ICardPlayerContext"
     private val PLAY_VIEW_METHOD_NAMES = setOf("executePlayViewUnite", "playViewUnite")
@@ -2001,6 +2728,7 @@ private sealed class SymbolScanResult<out T> {
         val value: T,
         val target: String,
         val evidence: String,
+        val hookPoints: List<HookPointStatus> = emptyList(),
     ) : SymbolScanResult<T>()
 
     data class Missing(

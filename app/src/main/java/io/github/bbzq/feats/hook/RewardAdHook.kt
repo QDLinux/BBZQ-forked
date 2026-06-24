@@ -1,89 +1,103 @@
 package io.github.bbzq.feats.hook
 
 import android.app.Activity
-import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import io.github.bbzq.ModuleSettings
 import io.github.bbzq.feats.BaseRoamingHook
 import io.github.bbzq.feats.RoamingEnv
-import io.github.bbzq.feats.from
 import io.github.bbzq.feats.hookAfter
-import io.github.bbzq.feats.hookAfterMethod
-import io.github.bbzq.feats.hookBeforeMethod
+import io.github.bbzq.feats.hookBefore
+import io.github.bbzq.feats.symbol.RestoredRewardAdSymbols
 import java.lang.reflect.Field
-import java.lang.reflect.Modifier
 import java.util.Locale
 
 class RewardAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     override fun startHook() {
         if (!ModuleSettings.isSkipRewardAdEnabled(prefs)) return
+        val symbols = env.symbols?.rewardAd?.restore(classLoader) ?: run {
+            log("startHook: RewardAd skipped because symbols are unavailable")
+            return
+        }
 
         var count = 0
-        count += hookRewardActivity()
-        count += hookRewardHeaderTimer()
-        count += hookCountDownTextView()
+        count += hookRewardActivity(symbols)
+        count += hookRewardHeaderTimer(symbols)
+        count += hookCountDownTextView(symbols)
         count += hookActivitySweeper()
         log("startHook: RewardAd, methods=$count")
     }
 
-    private fun hookRewardActivity(): Int {
-        val activityClass = BASE_REWARD_ACTIVITY.from(classLoader)
-            ?: LEGACY_REWARD_ACTIVITY.from(classLoader)
-            ?: run {
-                log("startHook: RewardAd missing activity class")
-                return 0
+    private fun hookRewardActivity(symbols: RestoredRewardAdSymbols): Int {
+        var count = 0
+        symbols.activityOnCreate?.let { method ->
+            env.hookAfter(method) { param ->
+                scheduleSkipSweep(param.thisObject)
             }
-        var count = 0
-        count += env.hookAfterMethod(activityClass, "onCreate", Bundle::class.java) { param ->
-            scheduleSkipSweep(param.thisObject)
+            count++
         }
-        count += env.hookBeforeMethod(activityClass, "onResume") {
-            backdateJumpClock()
+        symbols.activityOnResume?.let { method ->
+            env.hookBefore(method) {
+                backdateJumpClock(symbols.jumpClockField)
+            }
+            count++
         }
-        count += env.hookAfterMethod(activityClass, "onResume") { param ->
-            scheduleSkipSweep(param.thisObject)
+        symbols.activityOnResume?.let { method ->
+            env.hookAfter(method) { param ->
+                scheduleSkipSweep(param.thisObject)
+            }
+            count++
         }
-        count += env.hookAfterMethod(activityClass, "onStop") {
-            backdateJumpClock()
-        }
-        return count
-    }
-
-    private fun hookRewardHeaderTimer(): Int {
-        val headerClass = REWARD_HEADER_VIEW.from(classLoader) ?: run {
-            log("startHook: RewardAd missing header view")
-            return 0
-        }
-        var count = 0
-        count += env.hookBeforeMethod(headerClass, "setTotalTime", Int::class.javaPrimitiveType!!) { param ->
-            val total = (param.args.firstOrNull() as? Number)?.toInt() ?: return@hookBeforeMethod
-            if (total > 1) param.args[0] = 1
-        }
-        count += env.hookBeforeMethod(headerClass, "setElapsedTime", Long::class.javaPrimitiveType!!) { param ->
-            val elapsed = (param.args.firstOrNull() as? Number)?.toLong() ?: return@hookBeforeMethod
-            if (elapsed < REWARD_FAST_FORWARD_MS) param.args[0] = REWARD_FAST_FORWARD_MS
-        }
-        count += env.hookBeforeMethod(headerClass, "startTimer") { param ->
-            invokeSetElapsedTime(param.thisObject, REWARD_FAST_FORWARD_MS)
+        symbols.activityOnStop?.let { method ->
+            env.hookAfter(method) {
+                backdateJumpClock(symbols.jumpClockField)
+            }
+            count++
         }
         return count
     }
 
-    private fun hookCountDownTextView(): Int {
-        val textClass = COUNT_DOWN_TEXT_VIEW.from(classLoader) ?: run {
-            log("startHook: RewardAd missing countdown text view")
-            return 0
-        }
+    private fun hookRewardHeaderTimer(symbols: RestoredRewardAdSymbols): Int {
         var count = 0
-        count += env.hookBeforeMethod(textClass, "setTotalTime", Int::class.javaPrimitiveType!!) { param ->
-            val total = (param.args.firstOrNull() as? Number)?.toInt() ?: return@hookBeforeMethod
-            if (total > 1) param.args[0] = 1
+        symbols.headerSetTotalTime?.let { method ->
+            env.hookBefore(method) { param ->
+                val total = (param.args.firstOrNull() as? Number)?.toInt() ?: return@hookBefore
+                if (total > 1) param.args[0] = 1
+            }
+            count++
         }
-        count += env.hookBeforeMethod(textClass, "setElapsedTime", Long::class.javaPrimitiveType!!) { param ->
-            val elapsed = (param.args.firstOrNull() as? Number)?.toLong() ?: return@hookBeforeMethod
-            if (elapsed < REWARD_FAST_FORWARD_MS) param.args[0] = REWARD_FAST_FORWARD_MS
+        symbols.headerSetElapsedTime?.let { method ->
+            env.hookBefore(method) { param ->
+                val elapsed = (param.args.firstOrNull() as? Number)?.toLong() ?: return@hookBefore
+                if (elapsed < REWARD_FAST_FORWARD_MS) param.args[0] = REWARD_FAST_FORWARD_MS
+            }
+            count++
+        }
+        symbols.headerStartTimer?.let { method ->
+            env.hookBefore(method) { param ->
+                invokeSetElapsedTime(param.thisObject, REWARD_FAST_FORWARD_MS)
+            }
+            count++
+        }
+        return count
+    }
+
+    private fun hookCountDownTextView(symbols: RestoredRewardAdSymbols): Int {
+        var count = 0
+        symbols.countDownSetTotalTime?.let { method ->
+            env.hookBefore(method) { param ->
+                val total = (param.args.firstOrNull() as? Number)?.toInt() ?: return@hookBefore
+                if (total > 1) param.args[0] = 1
+            }
+            count++
+        }
+        symbols.countDownSetElapsedTime?.let { method ->
+            env.hookBefore(method) { param ->
+                val elapsed = (param.args.firstOrNull() as? Number)?.toLong() ?: return@hookBefore
+                if (elapsed < REWARD_FAST_FORWARD_MS) param.args[0] = REWARD_FAST_FORWARD_MS
+            }
+            count++
         }
         return count
     }
@@ -101,27 +115,11 @@ class RewardAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
         return 1
     }
 
-    private fun backdateJumpClock() {
-        val jumpClockField = resolveJumpClockField() ?: return
+    private fun backdateJumpClock(jumpClockField: Field?) {
+        if (jumpClockField == null) return
         runCatching {
             jumpClockField.set(null, System.currentTimeMillis() - JUMP_FAST_FORWARD_MS)
         }
-    }
-
-    private fun resolveJumpClockField(): Field? {
-        if (jumpClockResolved) return jumpClockField
-        jumpClockResolved = true
-        jumpClockField = JUMP_CLOCK_CLASSES.firstNotNullOfOrNull { className ->
-            val type = className.from(classLoader) ?: return@firstNotNullOfOrNull null
-            type.declaredFields
-                .filter { field ->
-                    Modifier.isStatic(field.modifiers) &&
-                        (field.type == java.lang.Long::class.java || field.type == Long::class.javaPrimitiveType)
-                }
-                .singleOrNull()
-                ?.apply { isAccessible = true }
-        }
-        return jumpClockField
     }
 
     private fun invokeSetElapsedTime(target: Any?, elapsedMs: Long) {
@@ -196,15 +194,7 @@ class RewardAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     private fun isRewardActivity(activity: Activity): Boolean =
         activity.javaClass.name.startsWith("com.bilibili.ad.reward.")
 
-    private var jumpClockResolved = false
-    private var jumpClockField: Field? = null
-
     private companion object {
-        private const val BASE_REWARD_ACTIVITY = "com.bilibili.ad.reward.activity.BaseRewardAdActivity"
-        private const val LEGACY_REWARD_ACTIVITY = "com.bilibili.ad.reward.RewardAdActivity"
-        private const val REWARD_HEADER_VIEW = "com.bilibili.ad.reward.view.header.RewardAdHeaderView"
-        private const val COUNT_DOWN_TEXT_VIEW = "com.bilibili.ad.reward.view.header.CountDownTextView"
-        private val JUMP_CLOCK_CLASSES = arrayOf("Ke.m", "Pe.k")
         private const val REWARD_FAST_FORWARD_MS = 60_000L
         private const val JUMP_FAST_FORWARD_MS = 60_000L
         private const val MAX_VIEW_SCAN_NODES = 320

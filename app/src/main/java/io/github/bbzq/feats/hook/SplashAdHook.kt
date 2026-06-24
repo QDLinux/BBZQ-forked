@@ -3,20 +3,12 @@
 import io.github.bbzq.ModuleSettings
 import io.github.bbzq.feats.BaseRoamingHook
 import io.github.bbzq.feats.RoamingEnv
-import io.github.bbzq.feats.from
 import io.github.bbzq.feats.getObjectField
 import io.github.bbzq.feats.hookAfter
-import io.github.bbzq.feats.methodsNamed
-import java.lang.reflect.Method
-import java.lang.reflect.Modifier
 
 class SplashAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     override fun startHook() {
-        val parserMethods = buildList {
-            addAll(findGsonParsers())
-            addAll(findFastJsonParsers())
-            addAll(findKotlinxJsonParsers())
-        }.distinctBy(Method::toGenericString)
+        val parserMethods = env.symbols?.splashAd?.restore(classLoader)?.parserMethods.orEmpty()
 
         parserMethods.forEach { method ->
             env.hookAfter(method) { param ->
@@ -36,33 +28,6 @@ class SplashAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
         } else {
             log("startHook: SplashAd, methods=${parserMethods.size}")
         }
-    }
-
-    private fun findGsonParsers(): List<Method> {
-        val gson = "com.google.gson.Gson".from(classLoader) ?: return emptyList()
-        return gson.methodsNamed("fromJson")
-            .filter { !Modifier.isAbstract(it.modifiers) && it.returnType != Void.TYPE }
-            .toList()
-    }
-
-    private fun findFastJsonParsers(): List<Method> {
-        val json = FAST_JSON_CLASSES.firstNotNullOfOrNull { it.from(classLoader) }
-            ?: return emptyList()
-        return json.declaredMethods
-            .filter {
-                Modifier.isStatic(it.modifiers) &&
-                    it.name in FAST_JSON_PARSE_METHODS &&
-                    it.returnType != Void.TYPE
-            }
-            .toList()
-    }
-
-    private fun findKotlinxJsonParsers(): List<Method> {
-        val json = KOTLINX_JSON_CLASSES.firstNotNullOfOrNull { it.from(classLoader) }
-            ?: return emptyList()
-        return json.methodsNamed("decodeFromString")
-            .filter { it.parameterCount >= 2 && it.returnType != Void.TYPE }
-            .toList()
     }
 
     private fun dispatch(rawResult: Any?) {
@@ -128,15 +93,6 @@ class SplashAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     }
 
     private companion object {
-        private val FAST_JSON_CLASSES = arrayOf(
-            "com.alibaba.fastjson.JSON",
-            "com.alibaba.fastjson2.JSON",
-        )
-        private val FAST_JSON_PARSE_METHODS = setOf("parse", "parseObject")
-        private val KOTLINX_JSON_CLASSES = arrayOf(
-            "kotlinx.serialization.json.Json",
-            "kotlinx.serialization.p7923json.AbstractC137025Json",
-        )
         private val JSON_OBJECT_CLASSES = setOf(
             "kotlinx.serialization.json.JsonObject",
             "kotlinx.serialization.p7923json.JsonObject",

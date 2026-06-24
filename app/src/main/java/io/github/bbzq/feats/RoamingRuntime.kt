@@ -36,7 +36,7 @@ object RoamingRuntime {
         resolveProcessScope(packageName, processName) != ProcessScope.UNSUPPORTED
 
     fun isSymbolResolverProcess(packageName: String, processName: String): Boolean =
-        resolveProcessScope(packageName, processName).let { it == ProcessScope.MAIN || it == ProcessScope.DOWNLOAD }
+        resolveProcessScope(packageName, processName) != ProcessScope.UNSUPPORTED
 
     fun start(
         xposed: XposedInterface,
@@ -63,7 +63,7 @@ object RoamingRuntime {
         }
 
         ModuleSettingsBridge.attach(env.hostContext, xposed)
-        val symbols = if (processScope == ProcessScope.MAIN || processScope == ProcessScope.DOWNLOAD) {
+        val symbols = if (processScope != ProcessScope.UNSUPPORTED) {
             BiliSymbolResolver.resolve(
                 hostContext = env.hostContext,
                 moduleContext = env.moduleContext,

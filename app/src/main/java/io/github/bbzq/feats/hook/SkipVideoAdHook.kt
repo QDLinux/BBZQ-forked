@@ -54,7 +54,9 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     override fun startHook() {
         val config = ModuleSettings.refreshSkipVideoAdCache(prefs)
         if (!config.enabled) return
-        SkipVideoAdAutoLike.install(env)
+        if (config.autoLikeEnabled) {
+            SkipVideoAdAutoLike.install(env)
+        }
         val symbols = env.symbols?.skipVideoAd?.restore(classLoader)
         if (symbols == null) {
             log("startHook: SkipVideoAd skipped because symbols are unavailable")

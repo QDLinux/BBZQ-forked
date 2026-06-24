@@ -1,121 +1,128 @@
-﻿package io.github.bbzq.feats.hook
+package io.github.bbzq.feats.hook
 
 import android.content.ClipData
 import android.content.ClipboardManager
 import io.github.bbzq.ModuleSettings
 import io.github.bbzq.feats.BaseRoamingHook
 import io.github.bbzq.feats.RoamingEnv
-import io.github.bbzq.feats.allMethods
-import io.github.bbzq.feats.from
 import io.github.bbzq.feats.getObjectField
 import io.github.bbzq.feats.hookAfter
-import io.github.bbzq.feats.hookAfterMethod
 import io.github.bbzq.feats.hookBefore
 import io.github.bbzq.feats.hookBeforeAllConstructors
 import io.github.bbzq.feats.setObjectField
-import java.lang.reflect.Modifier
+import io.github.bbzq.feats.symbol.RestoredShareSymbols
+import java.lang.reflect.Method
 
 class ShareHook(env: RoamingEnv) : BaseRoamingHook(env) {
     override fun startHook() {
+        if (!isShareTransformEnabled(isMiniProgramEnabled())) return
+
+        val symbols = env.symbols?.share?.restore(classLoader)
+        if (symbols == null) {
+            log("startHook: Share skipped because symbols are unavailable")
+            return
+        }
         var count = 0
-        count += hookLegacyShareClickResult()
-        count += hookModernShareContent()
-        count += hookModernCopyContent()
-        count += hookCopyToClipboardUtility()
+        count += hookLegacyShareClickResult(symbols)
+        count += hookModernShareContent(symbols)
+        count += hookModernCopyContent(symbols)
+        count += hookCopyToClipboardUtility(symbols)
         count += hookClipboardFallback()
 
         log("startHook: Share, methods=$count")
     }
 
-    private fun hookLegacyShareClickResult(): Int {
-        val shareClickResult = "com.bilibili.lib.sharewrapper.online.api.ShareClickResult".from(classLoader)
-            ?: return 0
+    private fun hookLegacyShareClickResult(symbols: RestoredShareSymbols): Int {
         var count = 0
-        count += env.hookAfterMethod(shareClickResult, "getLink") { param ->
-            val link = param.result as? String ?: return@hookAfterMethod
-            val transformAv = isMiniProgramEnabled()
-            if (!isShareTransformEnabled(transformAv)) return@hookAfterMethod
+        symbols.legacyGetLink?.let { method ->
+            env.hookAfter(method) { param ->
+                val link = param.result as? String ?: return@hookAfter
+                val transformAv = isMiniProgramEnabled()
+                if (!isShareTransformEnabled(transformAv)) return@hookAfter
 
-            val purified = purifyLink(link, transformAv)
-            if (purified == link) return@hookAfterMethod
-            param.thisObject?.setObjectField("link", purified)
-            param.result = purified
-        }
-        count += env.hookAfterMethod(shareClickResult, "getContent") { param ->
-            val content = param.result as? String ?: return@hookAfterMethod
-            val transformAv = isMiniProgramEnabled()
-            if (!isShareTransformEnabled(transformAv)) return@hookAfterMethod
-
-            val transformed = purifyText(content, transformAv)
-            if (transformed == content) return@hookAfterMethod
-            param.thisObject?.setObjectField("content", transformed)
-            param.result = transformed
-        }
-        count += env.hookAfterMethod(shareClickResult, "getShareMode") { param ->
-            if (!isMiniProgramEnabled()) return@hookAfterMethod
-            if (param.result != 6 && param.result != 7) return@hookAfterMethod
-            param.result = 0
-            val target = param.thisObject ?: return@hookAfterMethod
-            if (target.getObjectField("title") == BILI_TITLE) {
-                target.setObjectField("title", target.getObjectField("content"))
-                target.setObjectField("content", BBZQ_SHARE_TEXT)
+                val purified = purifyLink(link, transformAv)
+                if (purified == link) return@hookAfter
+                param.thisObject?.setObjectField("link", purified)
+                param.result = purified
             }
-            (target.getObjectField("content") as? String)
-                ?.takeIf { it.startsWith(WATCHED_PREFIX) }
-                ?.let { target.setObjectField("content", "$it\n$BBZQ_SHARE_TEXT") }
+            count++
+        }
+        symbols.legacyGetContent?.let { method ->
+            env.hookAfter(method) { param ->
+                val content = param.result as? String ?: return@hookAfter
+                val transformAv = isMiniProgramEnabled()
+                if (!isShareTransformEnabled(transformAv)) return@hookAfter
+
+                val transformed = purifyText(content, transformAv)
+                if (transformed == content) return@hookAfter
+                param.thisObject?.setObjectField("content", transformed)
+                param.result = transformed
+            }
+            count++
+        }
+        symbols.legacyGetShareMode?.let { method ->
+            env.hookAfter(method) { param ->
+                if (!isMiniProgramEnabled()) return@hookAfter
+                if (param.result != 6 && param.result != 7) return@hookAfter
+                param.result = 0
+                val target = param.thisObject ?: return@hookAfter
+                if (target.getObjectField("title") == BILI_TITLE) {
+                    target.setObjectField("title", target.getObjectField("content"))
+                    target.setObjectField("content", BBZQ_SHARE_TEXT)
+                }
+                (target.getObjectField("content") as? String)
+                    ?.takeIf { it.startsWith(WATCHED_PREFIX) }
+                    ?.let { target.setObjectField("content", "$it\n$BBZQ_SHARE_TEXT") }
+            }
+            count++
         }
         return count
     }
 
-    private fun hookModernShareContent(): Int {
+    private fun hookModernShareContent(symbols: RestoredShareSymbols): Int {
         var count = 0
-        "p7645kntr.common.share.domain.p7866v1.ShareContent".from(classLoader)?.let { type ->
+        symbols.shareContentClass?.let { type ->
             count += env.hookBeforeAllConstructors(type) { param ->
                 rewriteShareContentArgs(param.args)
             }
-            count += hookCopyMethod(type, ::rewriteShareContentArgs)
-            count += hookPurifiedStringGetter(type, "getLink", ::purifyLink)
-            count += hookPurifiedStringGetter(type, "getContent", ::purifyText)
-            count += env.hookAfterMethod(type, "getMode") { param ->
-                if (!isMiniProgramEnabled()) return@hookAfterMethod
-                param.result = normalizeShareMode(param.result)
+            count += hookCopyMethods(symbols.shareContentCopyMethods, ::rewriteShareContentArgs)
+            count += hookPurifiedStringGetter(symbols.shareContentGetLink, ::purifyLink)
+            count += hookPurifiedStringGetter(symbols.shareContentGetContent, ::purifyText)
+            symbols.shareContentGetMode?.let { method ->
+                env.hookAfter(method) { param ->
+                    if (!isMiniProgramEnabled()) return@hookAfter
+                    param.result = normalizeShareMode(param.result)
+                }
+                count++
             }
         }
-        "p7645kntr.common.share.domain.p7866v1.ShareBiliContent".from(classLoader)?.let { type ->
+        symbols.shareBiliContentClass?.let { type ->
             count += env.hookBeforeAllConstructors(type) { param ->
                 rewriteShareBiliContentArgs(param.args)
             }
-            count += hookCopyMethod(type, ::rewriteShareBiliContentArgs)
-            count += hookPurifiedStringGetter(type, "getDescription", ::purifyText)
-            count += hookPurifiedStringGetter(type, "getContentUrl", ::purifyLink)
+            count += hookCopyMethods(symbols.shareBiliContentCopyMethods, ::rewriteShareBiliContentArgs)
+            count += hookPurifiedStringGetter(symbols.shareBiliContentGetDescription, ::purifyText)
+            count += hookPurifiedStringGetter(symbols.shareBiliContentGetContentUrl, ::purifyLink)
         }
         return count
     }
 
-    private fun hookModernCopyContent(): Int {
-        val type = "p7645kntr.common.share.common.handler.p7848copy.C134543b".from(classLoader)
-            ?: return 0
+    private fun hookModernCopyContent(symbols: RestoredShareSymbols): Int {
+        val type = symbols.copyContentClass ?: return 0
         var count = env.hookBeforeAllConstructors(type) { param ->
             val transformAv = isMiniProgramEnabled()
             if (!isShareTransformEnabled(transformAv)) return@hookBeforeAllConstructors
             val content = param.args.firstOrNull() as? String ?: return@hookBeforeAllConstructors
             param.args[0] = purifyText(content, transformAv)
         }
-        count += hookPurifiedStringGetter(type, "mo127c", ::purifyText)
+        symbols.copyContentGetters.forEach { method ->
+            count += hookPurifiedStringGetter(method, ::purifyText)
+        }
         return count
     }
 
-    private fun hookCopyToClipboardUtility(): Int {
-        val type = "p7645kntr.common.share.common.handler.p7848copy.C134542a".from(classLoader)
-            ?: return 0
-        val methods = type.allMethods()
-            .filter {
-                Modifier.isStatic(it.modifiers) &&
-                    it.parameterTypes.contentEquals(arrayOf(String::class.java)) &&
-                    it.returnType == Void.TYPE
-            }
-            .toList()
-        methods.forEach { method ->
+    private fun hookCopyToClipboardUtility(symbols: RestoredShareSymbols): Int {
+        symbols.copyUtilityMethods.forEach { method ->
             env.hookBefore(method) { param ->
                 val transformAv = isMiniProgramEnabled()
                 if (!isShareTransformEnabled(transformAv)) return@hookBefore
@@ -123,17 +130,10 @@ class ShareHook(env: RoamingEnv) : BaseRoamingHook(env) {
                 param.args[0] = purifyText(content, transformAv)
             }
         }
-        return methods.size
+        return symbols.copyUtilityMethods.size
     }
 
-    private fun hookCopyMethod(type: Class<*>, rewriter: (MutableList<Any?>) -> Unit): Int {
-        val methods = type.allMethods()
-            .filter {
-                !Modifier.isStatic(it.modifiers) &&
-                    it.returnType == type &&
-                    it.parameterCount >= 2
-            }
-            .toList()
+    private fun hookCopyMethods(methods: List<Method>, rewriter: (MutableList<Any?>) -> Unit): Int {
         methods.forEach { method ->
             env.hookBefore(method) { param ->
                 rewriter(param.args)
@@ -143,16 +143,10 @@ class ShareHook(env: RoamingEnv) : BaseRoamingHook(env) {
     }
 
     private fun hookPurifiedStringGetter(
-        type: Class<*>,
-        methodName: String,
+        method: Method?,
         purifier: (String, Boolean) -> String,
     ): Int {
-        val method = type.allMethods()
-            .firstOrNull {
-                it.name == methodName &&
-                    it.parameterCount == 0 &&
-                    it.returnType == String::class.java
-            } ?: return 0
+        if (method == null) return 0
         env.hookAfter(method) { param ->
             val transformAv = isMiniProgramEnabled()
             if (!isShareTransformEnabled(transformAv)) return@hookAfter

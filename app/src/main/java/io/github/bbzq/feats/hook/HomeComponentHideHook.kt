@@ -58,11 +58,13 @@ class HomeComponentHideHook(env: io.github.bbzq.feats.RoamingEnv) : BaseRoamingH
     }
 
     private fun hookHomeComponentCatalog(): Int {
-        val methods = env.symbols?.homeComponentHide?.restore(classLoader)?.baseHomeFragmentMethods.orEmpty()
+        val symbols = env.symbols?.homeComponentHide?.restore(classLoader) ?: return 0
+        val catalogMethod = symbols.componentCatalogMethod ?: return 0
+        val methods = symbols.baseHomeFragmentMethods
         methods.forEach { method ->
             env.hookAfter(method) { param ->
                 runCatching {
-                    collectHomeComponentCatalog(param.thisObject)
+                    collectHomeComponentCatalog(param.thisObject, catalogMethod)
                 }.onFailure {
                     log("HomeComponentHide component catalog hook failed at ${method.declaringClass.name}.${method.name}", it)
                 }
@@ -71,7 +73,7 @@ class HomeComponentHideHook(env: io.github.bbzq.feats.RoamingEnv) : BaseRoamingH
         return methods.size
     }
 
-    private fun collectHomeComponentCatalog(fragment: Any?) {
+    private fun collectHomeComponentCatalog(fragment: Any?, catalogMethod: Method) {
         if (fragment == null) return
         val fragmentName = fragment.javaClass.name
         if (!BASE_HOME_FRAGMENT_NAMES.any { baseName ->
@@ -80,7 +82,7 @@ class HomeComponentHideHook(env: io.github.bbzq.feats.RoamingEnv) : BaseRoamingH
             }) return
 
         val components = runCatching {
-            fragment.callMethod("m169957gf") as? List<*>
+            catalogMethod.invoke(fragment) as? List<*>
         }.getOrNull().orEmpty()
 
         components.forEach { component ->
