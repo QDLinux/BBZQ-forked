@@ -3,7 +3,6 @@ package io.github.bbzq.feats.hook
 import io.github.bbzq.ModuleSettings
 import io.github.bbzq.ModuleSettingsBridge
 import io.github.bbzq.feats.BaseRoamingHook
-import io.github.bbzq.feats.MethodHookParam
 import io.github.bbzq.feats.RoamingEnv
 import io.github.bbzq.feats.allFields
 import io.github.bbzq.feats.allMethods
@@ -11,7 +10,6 @@ import io.github.bbzq.feats.callMethod
 import io.github.bbzq.feats.callStaticMethod
 import io.github.bbzq.feats.hookAfter
 import io.github.bbzq.feats.hookBefore
-import io.github.bbzq.feats.hookBeforeConstructor
 import io.github.bbzq.feats.isAssignableFromBoxed
 import io.github.bbzq.feats.setObjectField
 import io.github.bbzq.feats.symbol.RestoredChronosPromotionSymbols
@@ -45,15 +43,14 @@ class ChronosPromotionHook(env: RoamingEnv) : BaseRoamingHook(env) {
             return
         }
 
-        val installed = installLocalHandlerHooks(symbols) +
+        val installed = installRpcReceiveHooks(symbols) +
             installLocalGetViewProgressHook(symbols) +
             installLocalDmViewHook(symbols) +
             installRemoteHandlerHooks(symbols) +
             installChronosMessageSenderHook(symbols) +
             installAdDanmakuFeedHook(symbols) +
             installInteractLayerViewProgressHook(symbols) +
-            installGeminiOperationWidgetHooks(symbols) +
-            installPlayerSettingTopShortcutHook(symbols)
+            installGeminiOperationWidgetHooks(symbols)
         if (installed == 0) {
             log("startHook: ChronosPromotion no hook point found")
         } else {
@@ -61,68 +58,66 @@ class ChronosPromotionHook(env: RoamingEnv) : BaseRoamingHook(env) {
         }
     }
 
-    private fun installLocalHandlerHooks(symbols: RestoredChronosPromotionSymbols): Int {
+    private fun installRpcReceiveHooks(symbols: RestoredChronosPromotionSymbols): Int {
         val updateDetailStateRequest = symbols.clazz(CHRONOS_ID_UPDATE_DETAIL_STATE_REQUEST)
         val openUrlRequest = symbols.clazz(CHRONOS_ID_OPEN_URL_REQUEST)
         val adDanmakuEventRequest = symbols.clazz(CHRONOS_ID_AD_DANMAKU_EVENT_REQUEST)
         val notifyCommercialEventRequest = symbols.clazz(CHRONOS_ID_NOTIFY_COMMERCIAL_EVENT_REQUEST)
+        val methods = symbols.methods(CHRONOS_METHOD_RPC_RECEIVE)
 
-        var installed = 0
-        if (updateDetailStateRequest != null) {
-            installed += hookCallbackRequest(
-                methods = symbols.methods(CHRONOS_METHOD_LOCAL_DETAIL_STATE),
-                requestType = updateDetailStateRequest,
-                label = "detailState",
-            ) { request, callback, param ->
-                val reason = detailStateBlockReason(request) ?: return@hookCallbackRequest
-                invokeChronosCallback(callback, null)
-                logBlocked(reason)
-                param.result = null
-            }
-        } else {
-            log("startHook: ChronosPromotion detailState unavailable request=$updateDetailStateRequest")
+        if (methods.isEmpty()) {
+            log("startHook: ChronosPromotion rpc receive no hook point found")
+            return 0
         }
-        if (openUrlRequest != null) {
-            installed += hookCallbackRequest(
-                methods = symbols.methods(CHRONOS_METHOD_LOCAL_OPEN_URL),
-                requestType = openUrlRequest,
-                label = "openUrl",
-            ) { request, callback, param ->
-                val reason = openUrlBlockReason(request) ?: return@hookCallbackRequest
-                invokeChronosCallback(callback, null)
-                logBlocked(reason)
-                param.result = null
-            }
-        } else {
-            log("startHook: ChronosPromotion openUrl unavailable")
+        if (
+            updateDetailStateRequest == null &&
+            openUrlRequest == null &&
+            adDanmakuEventRequest == null &&
+            notifyCommercialEventRequest == null
+        ) {
+            log("startHook: ChronosPromotion rpc receive request types missing")
+            return 0
         }
-        if (adDanmakuEventRequest != null) {
-            installed += hookCallbackRequest(
-                methods = symbols.methods(CHRONOS_METHOD_LOCAL_AD_DANMAKU_EVENT),
-                requestType = adDanmakuEventRequest,
-                label = "adDanmakuEvent",
-            ) { _, callback, param ->
-                invokeChronosCallback(callback, -1)
-                logBlocked("adDanmakuEvent")
-                param.result = null
+
+        methods.forEach { method ->
+            env.hookBefore(method) { param ->
+                val requestClass = param.args.getOrNull(1) as? Class<*>
+                val request = param.args.getOrNull(2)
+                fun matches(type: Class<*>): Boolean =
+                    requestClass == type || (request != null && type.isInstance(request))
+
+                if (updateDetailStateRequest != null && matches(updateDetailStateRequest)) {
+                    val reason = request?.let(::detailStateBlockReason) ?: return@hookBefore
+                    invokeChronosCallback(param.args.getOrNull(4), null)
+                    logBlocked(reason)
+                    param.result = null
+                    return@hookBefore
+                }
+
+                if (openUrlRequest != null && matches(openUrlRequest)) {
+                    val reason = request?.let(::openUrlBlockReason) ?: return@hookBefore
+                    invokeChronosCallback(param.args.getOrNull(4), null)
+                    logBlocked(reason)
+                    param.result = null
+                    return@hookBefore
+                }
+
+                if (adDanmakuEventRequest != null && matches(adDanmakuEventRequest)) {
+                    invokeChronosCallback(param.args.getOrNull(5), -1)
+                    logBlocked("adDanmakuEvent")
+                    param.result = null
+                    return@hookBefore
+                }
+
+                if (notifyCommercialEventRequest != null && matches(notifyCommercialEventRequest)) {
+                    val identifier = request?.callMethod("getIdentifier") as? String
+                    logBlocked("commercialEvent:${identifier.orEmpty().take(MAX_LOG_VALUE_LENGTH)}")
+                    param.result = null
+                }
             }
-        } else {
-            log("startHook: ChronosPromotion adDanmakuEvent unavailable")
+            log("startHook: ChronosPromotion rpc receive at ${method.declaringClass.name}.${method.name}")
         }
-        if (notifyCommercialEventRequest != null) {
-            installed += hookSimpleRequest(
-                methods = symbols.methods(CHRONOS_METHOD_LOCAL_COMMERCIAL_EVENT),
-                requestType = notifyCommercialEventRequest,
-                label = "commercialEvent",
-            ) { request, param ->
-                val identifier = request.callMethod("getIdentifier") as? String
-                logBlocked("commercialEvent:${identifier.orEmpty().take(MAX_LOG_VALUE_LENGTH)}")
-                param.result = null
-            }
-        } else {
-            log("startHook: ChronosPromotion commercialEvent unavailable")
-        }
-        return installed
+        return methods.size
     }
 
     private fun installLocalGetViewProgressHook(symbols: RestoredChronosPromotionSymbols): Int {
@@ -308,46 +303,6 @@ class ChronosPromotionHook(env: RoamingEnv) : BaseRoamingHook(env) {
         return installed
     }
 
-    private fun hookCallbackRequest(
-        methods: List<Method>,
-        requestType: Class<*>,
-        label: String,
-        block: (request: Any, callback: Any?, param: MethodHookParam) -> Unit,
-    ): Int {
-        methods.forEach { method ->
-            env.hookBefore(method) { param ->
-                val request = param.args.firstOrNull() ?: return@hookBefore
-                if (!requestType.isInstance(request)) return@hookBefore
-                block(request, param.args.getOrNull(1), param)
-            }
-            log("startHook: ChronosPromotion $label at ${method.declaringClass.name}.${method.name}")
-        }
-        if (methods.isEmpty()) {
-            log("startHook: ChronosPromotion $label no hook point found")
-        }
-        return methods.size
-    }
-
-    private fun hookSimpleRequest(
-        methods: List<Method>,
-        requestType: Class<*>,
-        label: String,
-        block: (request: Any, param: MethodHookParam) -> Unit,
-    ): Int {
-        methods.forEach { method ->
-            env.hookBefore(method) { param ->
-                val request = param.args.firstOrNull() ?: return@hookBefore
-                if (!requestType.isInstance(request)) return@hookBefore
-                block(request, param)
-            }
-            log("startHook: ChronosPromotion $label at ${method.declaringClass.name}.${method.name}")
-        }
-        if (methods.isEmpty()) {
-            log("startHook: ChronosPromotion $label no hook point found")
-        }
-        return methods.size
-    }
-
     private fun installVideoDetailStateChangeHook(symbols: RestoredChronosPromotionSymbols): Int {
         val requestType = symbols.clazz(CHRONOS_ID_VIDEO_DETAIL_STATE_CHANGE_REQUEST)
         if (requestType == null) {
@@ -484,44 +439,6 @@ class ChronosPromotionHook(env: RoamingEnv) : BaseRoamingHook(env) {
             log("startHook: ChronosPromotion ad danmaku feed no hook point found")
         }
         return methods.size
-    }
-
-    private fun installPlayerSettingTopShortcutHook(symbols: RestoredChronosPromotionSymbols): Int {
-        val itemType = symbols.clazz(CHRONOS_ID_PLAYER_SETTING_TOP_ITEM)
-        if (itemType == null) {
-            log("startHook: ChronosPromotion player setting top item missing")
-            return 0
-        }
-        val function0Type = symbols.clazz(CHRONOS_ID_FUNCTION0)
-        if (function0Type == null) {
-            log("startHook: ChronosPromotion Function0 missing")
-            return 0
-        }
-        val watchLaterTitleId = resolveHostStringId(PLAYER_WATCH_LATER_TITLE_RES)
-        if (watchLaterTitleId == 0) {
-            log("startHook: ChronosPromotion watch later title resource missing")
-            return 0
-        }
-
-        val installed = env.hookBeforeConstructor(
-            itemType,
-            java.lang.Integer.TYPE,
-            java.lang.Integer.TYPE,
-            java.lang.Boolean.TYPE,
-            java.lang.Boolean.TYPE,
-            function0Type,
-        ) { param ->
-            if (param.args.getOrNull(0) != watchLaterTitleId) return@hookBeforeConstructor
-            if (param.args.getOrNull(2) == false) return@hookBeforeConstructor
-            param.args[2] = false
-            logBlocked("playerSettingTop:watchLater")
-        }
-        if (installed == 0) {
-            log("startHook: ChronosPromotion player setting top constructor no hook point found")
-        } else {
-            log("startHook: ChronosPromotion player setting top watch later hidden")
-        }
-        return installed
     }
 
     private fun installInteractLayerViewProgressHook(symbols: RestoredChronosPromotionSymbols): Int {
@@ -1371,13 +1288,6 @@ class ChronosPromotionHook(env: RoamingEnv) : BaseRoamingHook(env) {
         }
     }
 
-    private fun resolveHostStringId(name: String): Int =
-        runCatching {
-            env.hostContext.resources.getIdentifier(name, "string", env.packageName)
-        }.onFailure { throwable ->
-            log("ChronosPromotion resolve string resource failed: $name", throwable)
-        }.getOrDefault(0)
-
     private fun String?.hasAnyToken(tokens: Set<String>): Boolean {
         if (isNullOrBlank()) return false
         val lower = lowercase()
@@ -1442,7 +1352,6 @@ class ChronosPromotionHook(env: RoamingEnv) : BaseRoamingHook(env) {
 
     private companion object {
         private const val CHRONOS_ID_RPC_HANDLER = "rpcHandler"
-        private const val CHRONOS_ID_LOCAL_HANDLER = "localHandler"
         private const val CHRONOS_ID_REMOTE_HANDLER = "remoteHandler"
         private const val CHRONOS_ID_MESSAGE_SENDER = "messageSender"
         private const val CHRONOS_ID_ADD_CUSTOM_DANMAKU_REQUEST = "addCustomDanmakuRequest"
@@ -1454,7 +1363,6 @@ class ChronosPromotionHook(env: RoamingEnv) : BaseRoamingHook(env) {
         private const val CHRONOS_ID_INTERACT_LAYER_SERVICE = "interactLayerService"
         private const val CHRONOS_ID_GEMINI_OPERATION_WIDGET = "geminiOperationWidget"
         private const val CHRONOS_ID_GEMINI_OPERATION_OBSERVER = "geminiOperationObserver"
-        private const val CHRONOS_ID_PLAYER_SETTING_TOP_ITEM = "playerSettingTopItem"
         private const val CHRONOS_ID_VIEW_PROGRESS_DETAIL = "viewProgressDetail"
         private const val CHRONOS_ID_VIEW_PROGRESS_REPLY = "viewProgressReply"
         private const val CHRONOS_ID_UNITE_VIEW_PROGRESS_REPLY = "uniteViewProgressReply"
@@ -1466,12 +1374,8 @@ class ChronosPromotionHook(env: RoamingEnv) : BaseRoamingHook(env) {
         private const val CHRONOS_ID_OPEN_URL_REQUEST = "openUrlRequest"
         private const val CHRONOS_ID_AD_DANMAKU_EVENT_REQUEST = "adDanmakuEventRequest"
         private const val CHRONOS_ID_NOTIFY_COMMERCIAL_EVENT_REQUEST = "notifyCommercialEventRequest"
-        private const val CHRONOS_ID_FUNCTION0 = "function0"
         private const val CHRONOS_ID_FUNCTION2 = "function2"
-        private const val CHRONOS_METHOD_LOCAL_DETAIL_STATE = "localDetailState"
-        private const val CHRONOS_METHOD_LOCAL_OPEN_URL = "localOpenUrl"
-        private const val CHRONOS_METHOD_LOCAL_AD_DANMAKU_EVENT = "localAdDanmakuEvent"
-        private const val CHRONOS_METHOD_LOCAL_COMMERCIAL_EVENT = "localCommercialEvent"
+        private const val CHRONOS_METHOD_RPC_RECEIVE = "rpcReceive"
         private const val CHRONOS_METHOD_LOCAL_VIEW_PROGRESS = "localViewProgress"
         private const val CHRONOS_METHOD_LOCAL_DM_VIEW = "localDmView"
         private const val CHRONOS_METHOD_REMOTE_VIDEO_DETAIL_STATE = "remoteVideoDetailState"
@@ -1482,11 +1386,9 @@ class ChronosPromotionHook(env: RoamingEnv) : BaseRoamingHook(env) {
         private const val CHRONOS_METHOD_MESSAGE_SEND = "messageSend"
         private const val CHRONOS_METHOD_COMMAND_DM_LIST = "commandDmList"
         private const val CHRONOS_METHOD_AD_DANMAKU_FEED = "adDanmakuFeed"
-        private const val CHRONOS_METHOD_PLAYER_SETTING_TOP_CTOR = "playerSettingTopConstructor"
         private const val CHRONOS_METHOD_INTERACT_LAYER_VIEW_PROGRESS = "interactLayerViewProgress"
         private const val CHRONOS_METHOD_GEMINI_OPERATION_RENDER = "geminiOperationRender"
         private const val CHRONOS_METHOD_GEMINI_OPERATION_UPDATE = "geminiOperationUpdate"
-        private const val PLAYER_WATCH_LATER_TITLE_RES = "playerbaseres_global_string_163"
         private const val MAX_LOG_VALUE_LENGTH = 80
         private const val MAX_COLLECTION_TOKEN_SCAN = 12
         private const val ADD_CUSTOM_DANMAKU_AD_TYPE = 101

@@ -1236,11 +1236,9 @@ object BiliSymbolResolver {
             addMethods(id, methods.toList())
         }
 
-        val localHandler = addClass(CHRONOS_ID_LOCAL_HANDLER, CHRONOS_LOCAL_HANDLER)
         val rpcHandler = addClass(CHRONOS_ID_RPC_HANDLER, CHRONOS_RPC_HANDLER)
         val remoteHandler = addClass(CHRONOS_ID_REMOTE_HANDLER, REMOTE_SERVICE_HANDLER)
         val senderType = addClass(CHRONOS_ID_MESSAGE_SENDER, CHRONOS_MESSAGE_SENDER)
-        val function0Type = addClass(CHRONOS_ID_FUNCTION0, KOTLIN_FUNCTION0)
         val function2Type = addClass(CHRONOS_ID_FUNCTION2, KOTLIN_FUNCTION2)
 
         val updateDetailStateRequest = addClass(CHRONOS_ID_UPDATE_DETAIL_STATE_REQUEST, UPDATE_VIDEO_DETAIL_STATE_REQUEST)
@@ -1260,20 +1258,19 @@ object BiliSymbolResolver {
         val videoDetailStateChangeRequest = addClass(CHRONOS_ID_VIDEO_DETAIL_STATE_CHANGE_REQUEST, VIDEO_DETAIL_STATE_CHANGE_REQUEST)
         val viewProgressDetail = addClass(CHRONOS_ID_VIEW_PROGRESS_DETAIL, VIEW_PROGRESS_DETAIL)
 
-        if (localHandler != null && function2Type != null) {
-            if (updateDetailStateRequest != null && hasDetailStateGetterMethods(updateDetailStateRequest, DETAIL_STATE_GETTERS)) {
-                addMethods(CHRONOS_METHOD_LOCAL_DETAIL_STATE, localHandler.callbackRequestMethods(updateDetailStateRequest))
-            }
-            openUrlRequest?.let { addMethods(CHRONOS_METHOD_LOCAL_OPEN_URL, localHandler.callbackRequestMethods(it)) }
-            adDanmakuEventRequest?.let { addMethods(CHRONOS_METHOD_LOCAL_AD_DANMAKU_EVENT, localHandler.callbackRequestMethods(it)) }
-            notifyCommercialEventRequest?.let { addMethods(CHRONOS_METHOD_LOCAL_COMMERCIAL_EVENT, localHandler.simpleRequestMethods(it)) }
-        }
-
         if (rpcHandler != null) {
             val invokeMethods = rpcHandler.allMethods()
                 .filter { it.name == "invoke" && it.parameterCount == 6 }
                 .distinctBy(Method::toGenericString)
                 .toList()
+            if (
+                (updateDetailStateRequest != null && hasDetailStateGetterMethods(updateDetailStateRequest, DETAIL_STATE_GETTERS)) ||
+                openUrlRequest != null ||
+                adDanmakuEventRequest != null ||
+                notifyCommercialEventRequest != null
+            ) {
+                addMethods(CHRONOS_METHOD_RPC_RECEIVE, invokeMethods)
+            }
             if (getViewProgressRequest != null && function2Type != null && (viewProgressReply != null || uniteViewProgressReply != null)) {
                 addMethods(CHRONOS_METHOD_LOCAL_VIEW_PROGRESS, invokeMethods)
             }
@@ -1367,10 +1364,6 @@ object BiliSymbolResolver {
                 },
             )
         }
-        val playerSettingTopItem = addClass(CHRONOS_ID_PLAYER_SETTING_TOP_ITEM, PLAYER_SETTING_TOP_ITEM)
-        if (playerSettingTopItem != null && function0Type != null) {
-            methodGroups += NamedMethodGroup(CHRONOS_METHOD_PLAYER_SETTING_TOP_CTOR, emptyList())
-        }
         addClass(CHRONOS_ID_INTERACT_LAYER_SERVICE, INTERACT_LAYER_SERVICE)?.let { service ->
             if (viewProgressDetail != null) {
                 addMethods(
@@ -1407,7 +1400,7 @@ object BiliSymbolResolver {
         }
 
         val totalMethods = methodGroups.sumOf { it.methods.size }
-        if (totalMethods == 0 && methodGroups.none { it.id == CHRONOS_METHOD_PLAYER_SETTING_TOP_CTOR }) {
+        if (totalMethods == 0) {
             return SymbolScanResult.Missing("chronos promotion hook points not found")
         }
         val symbols = ChronosPromotionSymbols(
@@ -1417,19 +1410,6 @@ object BiliSymbolResolver {
         )
         return SymbolScanResult.Found(symbols, "ChronosPromotion", symbols.evidence)
     }
-
-    private fun Class<*>.callbackRequestMethods(requestType: Class<*>): List<Method> =
-        allMethods().filter {
-            it.parameterCount == 2 &&
-                it.parameterTypes[0] == requestType &&
-                it.parameterTypes[1].name == KOTLIN_FUNCTION2
-        }.distinctBy(Method::toGenericString).toList()
-
-    private fun Class<*>.simpleRequestMethods(requestType: Class<*>): List<Method> =
-        allMethods().filter {
-            it.parameterCount == 1 &&
-                it.parameterTypes[0] == requestType
-        }.distinctBy(Method::toGenericString).toList()
 
     private fun hasDetailStateGetterMethods(requestType: Class<*>, getters: List<String>): Boolean =
         getters.any { getter -> requestType.allMethods().any { it.name == getter && it.parameterCount == 0 } }
@@ -1912,7 +1892,6 @@ object BiliSymbolResolver {
     private const val STORY_LANDSCAPE_LIKE_WIDGET = "com.bilibili.video.story.action.widget.StoryLandscapeLikeWidget"
     private const val GEMINI_PLAYER_LIKE_WIDGET = "com.bilibili.app.gemini.player.widget.like.GeminiPlayerLikeWidget"
     private const val CHRONOS_ID_RPC_HANDLER = "rpcHandler"
-    private const val CHRONOS_ID_LOCAL_HANDLER = "localHandler"
     private const val CHRONOS_ID_REMOTE_HANDLER = "remoteHandler"
     private const val CHRONOS_ID_MESSAGE_SENDER = "messageSender"
     private const val CHRONOS_ID_ADD_CUSTOM_DANMAKU_REQUEST = "addCustomDanmakuRequest"
@@ -1924,7 +1903,6 @@ object BiliSymbolResolver {
     private const val CHRONOS_ID_INTERACT_LAYER_SERVICE = "interactLayerService"
     private const val CHRONOS_ID_GEMINI_OPERATION_WIDGET = "geminiOperationWidget"
     private const val CHRONOS_ID_GEMINI_OPERATION_OBSERVER = "geminiOperationObserver"
-    private const val CHRONOS_ID_PLAYER_SETTING_TOP_ITEM = "playerSettingTopItem"
     private const val CHRONOS_ID_VIEW_PROGRESS_DETAIL = "viewProgressDetail"
     private const val CHRONOS_ID_VIEW_PROGRESS_REPLY = "viewProgressReply"
     private const val CHRONOS_ID_UNITE_VIEW_PROGRESS_REPLY = "uniteViewProgressReply"
@@ -1936,12 +1914,8 @@ object BiliSymbolResolver {
     private const val CHRONOS_ID_OPEN_URL_REQUEST = "openUrlRequest"
     private const val CHRONOS_ID_AD_DANMAKU_EVENT_REQUEST = "adDanmakuEventRequest"
     private const val CHRONOS_ID_NOTIFY_COMMERCIAL_EVENT_REQUEST = "notifyCommercialEventRequest"
-    private const val CHRONOS_ID_FUNCTION0 = "function0"
     private const val CHRONOS_ID_FUNCTION2 = "function2"
-    private const val CHRONOS_METHOD_LOCAL_DETAIL_STATE = "localDetailState"
-    private const val CHRONOS_METHOD_LOCAL_OPEN_URL = "localOpenUrl"
-    private const val CHRONOS_METHOD_LOCAL_AD_DANMAKU_EVENT = "localAdDanmakuEvent"
-    private const val CHRONOS_METHOD_LOCAL_COMMERCIAL_EVENT = "localCommercialEvent"
+    private const val CHRONOS_METHOD_RPC_RECEIVE = "rpcReceive"
     private const val CHRONOS_METHOD_LOCAL_VIEW_PROGRESS = "localViewProgress"
     private const val CHRONOS_METHOD_LOCAL_DM_VIEW = "localDmView"
     private const val CHRONOS_METHOD_REMOTE_VIDEO_DETAIL_STATE = "remoteVideoDetailState"
@@ -1952,16 +1926,14 @@ object BiliSymbolResolver {
     private const val CHRONOS_METHOD_MESSAGE_SEND = "messageSend"
     private const val CHRONOS_METHOD_COMMAND_DM_LIST = "commandDmList"
     private const val CHRONOS_METHOD_AD_DANMAKU_FEED = "adDanmakuFeed"
-    private const val CHRONOS_METHOD_PLAYER_SETTING_TOP_CTOR = "playerSettingTopConstructor"
     private const val CHRONOS_METHOD_INTERACT_LAYER_VIEW_PROGRESS = "interactLayerViewProgress"
     private const val CHRONOS_METHOD_GEMINI_OPERATION_RENDER = "geminiOperationRender"
     private const val CHRONOS_METHOD_GEMINI_OPERATION_UPDATE = "geminiOperationUpdate"
     private const val CHRONOS_RPC_HANDLER =
         "tv.danmaku.biliplayerv2.service.interact.biz.chronos.chronosrpc.a"
-    private const val CHRONOS_LOCAL_HANDLER = "ei1.j"
     private const val REMOTE_SERVICE_HANDLER =
         "tv.danmaku.biliplayerv2.service.interact.biz.chronos.chronosrpc.remote.RemoteServiceHandler"
-    private const val CHRONOS_MESSAGE_SENDER = "di1.b"
+    private const val CHRONOS_MESSAGE_SENDER = "Hh1.d"
     private const val ADD_CUSTOM_DANMAKU_REQUEST =
         "tv.danmaku.biliplayerv2.service.interact.biz.chronos.chronosrpc.methods.send.AddCustomDanmaku\$Request"
     private const val DM_VIEW_CHANGE_REQUEST =
@@ -1980,7 +1952,6 @@ object BiliSymbolResolver {
         "com.bilibili.app.gemini.player.widget.operation.a"
     private const val GEMINI_OPERATION_OBSERVER =
         "com.bilibili.app.gemini.player.widget.operation.a\$d"
-    private const val PLAYER_SETTING_TOP_ITEM = "com.bilibili.playerbizcommonv2.widget.setting.I"
     private const val VIEW_PROGRESS_DETAIL =
         "tv.danmaku.biliplayerv2.service.interact.biz.model.viewprogress.uniteviewprogress.ViewProgressDetail"
     private const val VIEW_PROGRESS_REPLY =
@@ -2003,7 +1974,6 @@ object BiliSymbolResolver {
         "tv.danmaku.biliplayerv2.service.interact.biz.chronos.chronosrpc.methods.receive.AdDanmakuEvent\$Request"
     private const val NOTIFY_COMMERCIAL_EVENT_REQUEST =
         "tv.danmaku.biliplayerv2.service.interact.biz.chronos.chronosrpc.methods.receive.NotifyCommercialEvent\$Request"
-    private const val KOTLIN_FUNCTION0 = "kotlin.jvm.functions.Function0"
     private const val KOTLIN_FUNCTION2 = "kotlin.jvm.functions.Function2"
     private val DETAIL_STATE_GETTERS = listOf(
         "getFollowStates",
