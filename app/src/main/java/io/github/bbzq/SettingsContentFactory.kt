@@ -41,6 +41,7 @@ class SettingsContentFactory(
     private val tagCheckBoxes = mutableMapOf<String, CheckBox>()
     private val bottomBarItemCheckBoxes = mutableMapOf<String, CheckBox>()
     private val homeRecommendItemCheckBoxes = mutableMapOf<String, CheckBox>()
+    private val homeRecommendTabCheckBoxes = mutableMapOf<String, CheckBox>()
     private val homeComponentCheckBoxes = mutableMapOf<String, CheckBox>()
     private val sponsorBlockCategoryButtons = mutableMapOf<String, Button>()
     private lateinit var disableLongPressCopySwitch: Switch
@@ -50,6 +51,8 @@ class SettingsContentFactory(
     private lateinit var downloadConcurrencySummary: TextView
     private lateinit var bottomBarSwitch: Switch
     private lateinit var homeRecommendItemSwitch: Switch
+    private lateinit var homeRecommendTitleKeywordRow: View
+    private lateinit var homeRecommendTabSwitch: Switch
     private lateinit var homeRecommendTitleKeywordSummaryView: TextView
     private lateinit var hideAllHomeComponentsSwitch: Switch
     private lateinit var customHomeComponentHideSwitch: Switch
@@ -230,7 +233,6 @@ class SettingsContentFactory(
 
     private fun homeRecommendRows(): List<View> {
         val rows = mutableListOf<View>()
-        rows += createHomeRecommendTitleKeywordRow()
         rows += createSwitchRow(
             context.getString(R.string.home_recommend_vertical_av_detail_title),
             context.getString(R.string.home_recommend_vertical_av_detail_summary),
@@ -252,11 +254,33 @@ class SettingsContentFactory(
             homeRecommendItemSwitch = it
         }
 
+        rows += createHomeRecommendTitleKeywordRow()
         rows += createInfoRow(
             context.getString(R.string.home_recommend_custom_filter_item_title),
             context.getString(R.string.home_recommend_custom_filter_info_summary),
         )
         rows += createHomeRecommendItemGroup(homeRecommendItems())
+        rows += createSwitchRow(
+            context.getString(R.string.home_recommend_tab_filter_title),
+            context.getString(R.string.home_recommend_tab_filter_summary),
+            ModuleSettings.KEY_CUSTOM_HOME_RECOMMEND_TAB_FILTER_ENABLED,
+            false,
+        ) {
+            homeRecommendTabSwitch = it
+        }
+        val tabs = homeRecommendTabs()
+        if (tabs.isEmpty()) {
+            rows += createInfoRow(
+                context.getString(R.string.home_recommend_tab_item_title),
+                context.getString(R.string.home_recommend_tab_unavailable_summary),
+            )
+        } else {
+            rows += createInfoRow(
+                context.getString(R.string.home_recommend_tab_item_title),
+                context.getString(R.string.home_recommend_tab_info_summary),
+            )
+            rows += createHomeRecommendTabGroup(tabs)
+        }
         rows += createSwitchRow(
             context.getString(R.string.home_recommend_hide_all_title),
             context.getString(R.string.home_recommend_hide_all_summary),
@@ -886,6 +910,8 @@ class SettingsContentFactory(
                 setTextColor(TITLE_COLOR)
             })
             addView(homeRecommendTitleKeywordSummaryView)
+        }.also {
+            homeRecommendTitleKeywordRow = it
         }
     }
 
@@ -1069,6 +1095,25 @@ class SettingsContentFactory(
         }
     }
 
+    private fun createHomeRecommendTabGroup(items: List<HomeRecommendTabItem>): View {
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            items.forEach { item ->
+                addView(CheckBox(context).apply {
+                    text = item.displayText()
+                    textSize = 14f
+                    setTextColor(TITLE_COLOR)
+                    setPadding(dp(6), dp(2), dp(6), dp(2))
+                    setOnCheckedChangeListener { _, _ ->
+                        if (!refreshing) saveHiddenHomeRecommendTabs()
+                    }
+                    homeRecommendTabCheckBoxes[item.key] = this
+                })
+            }
+        }
+    }
+
     private fun createHomeComponentGroup(items: List<HomeComponentItem>): View {
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -1147,6 +1192,7 @@ class SettingsContentFactory(
             key == ModuleSettings.KEY_DISABLE_LONG_PRESS_COPY_ENABLED ||
             key == ModuleSettings.KEY_CUSTOM_BOTTOM_BAR_ENABLED ||
             key == ModuleSettings.KEY_CUSTOM_HOME_RECOMMEND_FILTER_ENABLED ||
+            key == ModuleSettings.KEY_CUSTOM_HOME_RECOMMEND_TAB_FILTER_ENABLED ||
             key == ModuleSettings.KEY_SKIP_VIDEO_AD_ENABLED ||
             key == ModuleSettings.KEY_HIDE_ALL_HOME_COMPONENTS_ENABLED ||
             key == ModuleSettings.KEY_CUSTOM_HOME_COMPONENT_HIDE_ENABLED
@@ -1213,6 +1259,8 @@ class SettingsContentFactory(
         val hiddenBottomBarItems = ModuleSettings.getHiddenBottomBarItems(prefs)
         val homeRecommendFilterEnabled = ModuleSettings.isCustomHomeRecommendFilterEnabled(prefs)
         val hiddenHomeRecommendItems = ModuleSettings.getHiddenHomeRecommendItems(prefs)
+        val homeRecommendTabFilterEnabled = ModuleSettings.isCustomHomeRecommendTabFilterEnabled(prefs)
+        val hiddenHomeRecommendTabs = ModuleSettings.getHiddenHomeRecommendTabs(prefs)
         val hideAllHomeComponentsEnabled = ModuleSettings.isHideAllHomeComponentsEnabled(prefs)
         val customHomeComponentHideEnabled = ModuleSettings.isCustomHomeComponentHideEnabled(prefs)
         val hiddenHomeComponents = ModuleSettings.getHiddenHomeComponents(prefs)
@@ -1258,9 +1306,20 @@ class SettingsContentFactory(
         if (::homeRecommendTitleKeywordSummaryView.isInitialized) {
             homeRecommendTitleKeywordSummaryView.text = homeRecommendTitleKeywordSummary()
         }
+        if (::homeRecommendTitleKeywordRow.isInitialized) {
+            homeRecommendTitleKeywordRow.isEnabled = homeRecommendFilterEnabled
+            homeRecommendTitleKeywordRow.alpha = if (homeRecommendFilterEnabled) 1f else 0.45f
+        }
         homeRecommendItemCheckBoxes.forEach { (key, checkBox) ->
             checkBox.isEnabled = homeRecommendFilterEnabled
             checkBox.isChecked = key in hiddenHomeRecommendItems
+        }
+        if (::homeRecommendTabSwitch.isInitialized) {
+            homeRecommendTabSwitch.isChecked = homeRecommendTabFilterEnabled
+        }
+        homeRecommendTabCheckBoxes.forEach { (key, checkBox) ->
+            checkBox.isEnabled = homeRecommendTabFilterEnabled
+            checkBox.isChecked = key in hiddenHomeRecommendTabs
         }
         if (::hideAllHomeComponentsSwitch.isInitialized) {
             hideAllHomeComponentsSwitch.isChecked = hideAllHomeComponentsEnabled
@@ -1329,6 +1388,12 @@ class SettingsContentFactory(
             .apply()
     }
 
+    private fun saveHiddenHomeRecommendTabs() {
+        prefs.edit()
+            .putStringSet(ModuleSettings.KEY_HIDDEN_HOME_RECOMMEND_TABS, hiddenHomeRecommendTabKeys().toMutableSet())
+            .apply()
+    }
+
     private fun saveHiddenHomeComponents() {
         prefs.edit()
             .putStringSet(ModuleSettings.KEY_HIDDEN_HOME_COMPONENTS, hiddenHomeComponentClassNames().toMutableSet())
@@ -1343,6 +1408,9 @@ class SettingsContentFactory(
 
     private fun hiddenHomeRecommendItemKeys(): Set<String> =
         homeRecommendItemCheckBoxes.filterValues { it.isChecked }.keys.toSet()
+
+    private fun hiddenHomeRecommendTabKeys(): Set<String> =
+        homeRecommendTabCheckBoxes.filterValues { it.isChecked }.keys.toSet()
 
     private fun hiddenHomeComponentClassNames(): Set<String> =
         homeComponentCheckBoxes.filterValues { !it.isChecked }.keys.toSet()
@@ -1391,6 +1459,12 @@ class SettingsContentFactory(
             .mapNotNull(::parseBottomBarItem)
             .distinctBy(BottomBarItem::id)
             .sortedBy(BottomBarItem::order)
+
+    private fun homeRecommendTabs(): List<HomeRecommendTabItem> =
+        ModuleSettings.getKnownHomeRecommendTabs(prefs)
+            .mapNotNull(::parseHomeRecommendTabItem)
+            .distinctBy(HomeRecommendTabItem::key)
+            .sortedBy(HomeRecommendTabItem::order)
 
     private fun homeRecommendItems(): List<HomeRecommendItem> = listOf(
         HomeRecommendItem(
@@ -1448,6 +1522,19 @@ class SettingsContentFactory(
         return null
     }
 
+    private fun parseHomeRecommendTabItem(raw: String): HomeRecommendTabItem? {
+        val parts = raw.split('\t', limit = 5)
+        if (parts.size == 5) {
+            val order = parts[0].toIntOrNull() ?: return null
+            return HomeRecommendTabItem(order, parts[1], parts[2], parts[3], parts[4])
+        }
+        if (parts.size == 4) {
+            val order = parts[0].toIntOrNull() ?: return null
+            return HomeRecommendTabItem(order, parts[1], parts[2], parts[3], "")
+        }
+        return null
+    }
+
     private fun parseHomeComponentItem(raw: String): HomeComponentItem? {
         val parts = raw.split('\t', limit = 3)
         if (parts.size != 3) return null
@@ -1479,6 +1566,22 @@ class SettingsContentFactory(
         val title: String,
         val summary: String,
     )
+
+    private data class HomeRecommendTabItem(
+        val order: Int,
+        val key: String,
+        val name: String,
+        val uri: String,
+        val reporterId: String,
+    ) {
+        fun displayText(): String {
+            val details = listOf(uri, reporterId)
+                .filter { it.isNotBlank() }
+                .distinct()
+                .joinToString("\n")
+            return if (details.isBlank()) name else "$name\n$details"
+        }
+    }
 
     private data class HomeComponentItem(
         val order: Int,

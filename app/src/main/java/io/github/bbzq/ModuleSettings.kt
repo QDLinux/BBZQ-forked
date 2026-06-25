@@ -30,6 +30,9 @@ object ModuleSettings {
     const val KEY_BLOCK_HOME_RECOMMEND_AUTO_REFRESH_ENABLED = "block_home_recommend_auto_refresh_enabled"
     const val KEY_CUSTOM_HOME_RECOMMEND_FILTER_ENABLED = "custom_home_recommend_filter_enabled"
     const val KEY_HIDDEN_HOME_RECOMMEND_ITEMS = "hidden_home_recommend_items"
+    const val KEY_CUSTOM_HOME_RECOMMEND_TAB_FILTER_ENABLED = "custom_home_recommend_tab_filter_enabled"
+    const val KEY_HIDDEN_HOME_RECOMMEND_TABS = "hidden_home_recommend_tabs"
+    const val KEY_KNOWN_HOME_RECOMMEND_TABS = "known_home_recommend_tabs"
     const val KEY_HIDE_ALL_HOME_COMPONENTS_ENABLED = "hide_all_home_components_enabled"
     const val KEY_CUSTOM_HOME_COMPONENT_HIDE_ENABLED = "custom_home_component_hide_enabled"
     const val KEY_HIDDEN_HOME_COMPONENTS = "hidden_home_components"
@@ -146,6 +149,8 @@ object ModuleSettings {
     private var skipVideoAdCache: SkipVideoAdCache? = null
     @Volatile
     private var knownBottomBarItemsCache: Set<String>? = null
+    @Volatile
+    private var knownHomeRecommendTabsCache: Set<String>? = null
 
     enum class ExportableValueType {
         BOOLEAN,
@@ -183,6 +188,7 @@ object ModuleSettings {
         ExportableConfigSpec(KEY_HOME_RECOMMEND_VERTICAL_AV_DETAIL_ENABLED, ExportableValueType.BOOLEAN) { it.getBoolean(KEY_HOME_RECOMMEND_VERTICAL_AV_DETAIL_ENABLED, false) },
         ExportableConfigSpec(KEY_BLOCK_HOME_RECOMMEND_AUTO_REFRESH_ENABLED, ExportableValueType.BOOLEAN) { it.getBoolean(KEY_BLOCK_HOME_RECOMMEND_AUTO_REFRESH_ENABLED, false) },
         ExportableConfigSpec(KEY_CUSTOM_HOME_RECOMMEND_FILTER_ENABLED, ExportableValueType.BOOLEAN) { it.getBoolean(KEY_CUSTOM_HOME_RECOMMEND_FILTER_ENABLED, false) },
+        ExportableConfigSpec(KEY_CUSTOM_HOME_RECOMMEND_TAB_FILTER_ENABLED, ExportableValueType.BOOLEAN) { it.getBoolean(KEY_CUSTOM_HOME_RECOMMEND_TAB_FILTER_ENABLED, false) },
         ExportableConfigSpec(KEY_HIDE_ALL_HOME_COMPONENTS_ENABLED, ExportableValueType.BOOLEAN) { it.getBoolean(KEY_HIDE_ALL_HOME_COMPONENTS_ENABLED, false) },
         ExportableConfigSpec(KEY_CUSTOM_HOME_COMPONENT_HIDE_ENABLED, ExportableValueType.BOOLEAN) { it.getBoolean(KEY_CUSTOM_HOME_COMPONENT_HIDE_ENABLED, false) },
         ExportableConfigSpec(KEY_PURIFY_STORY_VIDEO_AD_ENABLED, ExportableValueType.BOOLEAN) { it.getBoolean(KEY_PURIFY_STORY_VIDEO_AD_ENABLED, false) },
@@ -221,6 +227,9 @@ object ModuleSettings {
         })
         add(ExportableConfigSpec(KEY_HIDDEN_HOME_RECOMMEND_ITEMS, ExportableValueType.STRING_SET) {
             it.getStringSet(KEY_HIDDEN_HOME_RECOMMEND_ITEMS, emptySet<String>())?.toSet() ?: emptySet<String>()
+        })
+        add(ExportableConfigSpec(KEY_HIDDEN_HOME_RECOMMEND_TABS, ExportableValueType.STRING_SET) {
+            it.getStringSet(KEY_HIDDEN_HOME_RECOMMEND_TABS, emptySet<String>())?.toSet() ?: emptySet<String>()
         })
         add(ExportableConfigSpec(KEY_HIDDEN_HOME_COMPONENTS, ExportableValueType.STRING_SET) {
             it.getStringSet(KEY_HIDDEN_HOME_COMPONENTS, emptySet<String>())?.toSet() ?: emptySet<String>()
@@ -345,6 +354,27 @@ object ModuleSettings {
             .putBoolean(KEY_PURIFY_HOME_RECOMMEND_AD_ENABLED, false)
             .putBoolean(KEY_PURIFY_HOME_RECOMMEND_PICTURE_ENABLED, false)
             .putBoolean(KEY_PURIFY_HOME_RECOMMEND_GAME_PROMO_ENABLED, false)
+
+    fun isCustomHomeRecommendTabFilterEnabled(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(KEY_CUSTOM_HOME_RECOMMEND_TAB_FILTER_ENABLED, false)
+
+    fun getHiddenHomeRecommendTabs(prefs: SharedPreferences): Set<String> =
+        prefs.getStringSet(KEY_HIDDEN_HOME_RECOMMEND_TABS, emptySet()) ?: emptySet()
+
+    fun getKnownHomeRecommendTabs(prefs: SharedPreferences): Set<String> =
+        knownHomeRecommendTabsCache
+            ?: prefs.getStringSet(KEY_KNOWN_HOME_RECOMMEND_TABS, emptySet())
+            ?: emptySet()
+
+    fun refreshKnownHomeRecommendTabsCache(prefs: SharedPreferences): Set<String> =
+        prefs.getStringSet(KEY_KNOWN_HOME_RECOMMEND_TABS, emptySet())
+            ?.toSet()
+            .orEmpty()
+            .also { knownHomeRecommendTabsCache = it }
+
+    fun cacheKnownHomeRecommendTabs(items: Set<String>) {
+        knownHomeRecommendTabsCache = items.toSet()
+    }
 
     private fun legacyHomeRecommendFilterItems(prefs: SharedPreferences): Set<String> = buildSet {
         if (prefs.getBoolean(KEY_PURIFY_HOME_RECOMMEND_AD_ENABLED, false)) {

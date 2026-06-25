@@ -108,7 +108,7 @@ class HomeRecommendAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
             removeKetang = enabled && ModuleSettings.HOME_RECOMMEND_FILTER_KETANG in blockedItems,
             removeVerticalAv = enabled && ModuleSettings.HOME_RECOMMEND_FILTER_VERTICAL_AV in blockedItems,
             removeLargeCover = enabled && ModuleSettings.HOME_RECOMMEND_FILTER_LARGE_COVER in blockedItems,
-            titleKeywords = currentTitleKeywords(),
+            titleKeywords = if (enabled) currentTitleKeywords() else emptyList(),
             openVerticalAvInDetail = ModuleSettings.isHomeRecommendVerticalAvDetailEnabled(prefs),
         )
 

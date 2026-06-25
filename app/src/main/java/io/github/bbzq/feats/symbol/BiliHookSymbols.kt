@@ -32,6 +32,7 @@ data class BiliHookSymbols(
     val homeTopBar: HomeTopBarSymbols? = null,
     val bottomBar: BottomBarSymbols? = null,
     val homeRecommendFeed: HomeRecommendFeedSymbols? = null,
+    val homeRecommendTabs: HomeRecommendTabSymbols? = null,
     val homeComponentHide: HomeComponentHideSymbols? = null,
     val videoComment: VideoCommentSymbols? = null,
     val skipVideoAd: SkipVideoAdSymbols? = null,
@@ -67,6 +68,7 @@ data class BiliHookSymbols(
         .putOpt("homeTopBar", homeTopBar?.toJson())
         .putOpt("bottomBar", bottomBar?.toJson())
         .putOpt("homeRecommendFeed", homeRecommendFeed?.toJson())
+        .putOpt("homeRecommendTabs", homeRecommendTabs?.toJson())
         .putOpt("homeComponentHide", homeComponentHide?.toJson())
         .putOpt("videoComment", videoComment?.toJson())
         .putOpt("skipVideoAd", skipVideoAd?.toJson())
@@ -75,7 +77,7 @@ data class BiliHookSymbols(
         .putOpt("chronosPromotion", chronosPromotion?.toJson())
 
     companion object {
-        const val CACHE_SCHEMA_VERSION = 5
+        const val CACHE_SCHEMA_VERSION = 6
 
         fun fromJson(raw: String?): BiliHookSymbols? {
             if (raw.isNullOrBlank()) return null
@@ -106,6 +108,7 @@ data class BiliHookSymbols(
                     homeTopBar = obj.optJSONObject("homeTopBar")?.let(HomeTopBarSymbols::fromJson),
                     bottomBar = obj.optJSONObject("bottomBar")?.let(BottomBarSymbols::fromJson),
                     homeRecommendFeed = obj.optJSONObject("homeRecommendFeed")?.let(HomeRecommendFeedSymbols::fromJson),
+                    homeRecommendTabs = obj.optJSONObject("homeRecommendTabs")?.let(HomeRecommendTabSymbols::fromJson),
                     homeComponentHide = obj.optJSONObject("homeComponentHide")?.let(HomeComponentHideSymbols::fromJson),
                     videoComment = obj.optJSONObject("videoComment")?.let(VideoCommentSymbols::fromJson),
                     skipVideoAd = obj.optJSONObject("skipVideoAd")?.let(SkipVideoAdSymbols::fromJson),
@@ -992,6 +995,56 @@ data class BottomBarSymbols(
 data class RestoredBottomBarSymbols(
     val parserMethods: List<Method>,
     val resourceMethods: List<Method>,
+)
+
+data class HomeRecommendTabSymbols(
+    val buildTabsMethod: MethodDescriptor,
+    val idField: FieldDescriptor,
+    val titleField: FieldDescriptor,
+    val uriField: FieldDescriptor,
+    val reporterIdField: FieldDescriptor?,
+    val evidence: String,
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("buildTabsMethod", buildTabsMethod.toJson())
+        .put("idField", idField.toJson())
+        .put("titleField", titleField.toJson())
+        .put("uriField", uriField.toJson())
+        .putOpt("reporterIdField", reporterIdField?.toJson())
+        .put("evidence", evidence)
+
+    fun restore(classLoader: ClassLoader): RestoredHomeRecommendTabSymbols? {
+        val methodOwner = classLoader.loadClassOrNull(buildTabsMethod.declaringClassName) ?: return null
+        val idOwner = classLoader.loadClassOrNull(idField.declaringClassName) ?: return null
+        val titleOwner = classLoader.loadClassOrNull(titleField.declaringClassName) ?: return null
+        val uriOwner = classLoader.loadClassOrNull(uriField.declaringClassName) ?: return null
+        return RestoredHomeRecommendTabSymbols(
+            buildTabsMethod = buildTabsMethod.restore(methodOwner) ?: return null,
+            idField = idField.restore(idOwner) ?: return null,
+            titleField = titleField.restore(titleOwner) ?: return null,
+            uriField = uriField.restore(uriOwner) ?: return null,
+            reporterIdField = reporterIdField.restoreOptional(classLoader),
+        )
+    }
+
+    companion object {
+        fun fromJson(obj: JSONObject): HomeRecommendTabSymbols = HomeRecommendTabSymbols(
+            buildTabsMethod = MethodDescriptor.fromJson(obj.getJSONObject("buildTabsMethod")),
+            idField = FieldDescriptor.fromJson(obj.getJSONObject("idField")),
+            titleField = FieldDescriptor.fromJson(obj.getJSONObject("titleField")),
+            uriField = FieldDescriptor.fromJson(obj.getJSONObject("uriField")),
+            reporterIdField = obj.optJSONObject("reporterIdField")?.let(FieldDescriptor::fromJson),
+            evidence = obj.optString("evidence", "-"),
+        )
+    }
+}
+
+data class RestoredHomeRecommendTabSymbols(
+    val buildTabsMethod: Method,
+    val idField: Field,
+    val titleField: Field,
+    val uriField: Field,
+    val reporterIdField: Field?,
 )
 
 data class HomeRecommendFeedSymbols(

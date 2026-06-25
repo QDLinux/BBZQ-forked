@@ -127,7 +127,7 @@
     <string name="block_update_title">禁止 App 检查更新</string>
     <string name="block_update_summary">拦截应用内更新检查，避免弹出版本更新提示。</string>
     <string name="home_recommend_title_keyword_title">标题关键词屏蔽</string>
-    <string name="home_recommend_title_keyword_empty_summary">未配置关键词。填写后，标题包含关键词的首页推荐会被过滤。</string>
+    <string name="home_recommend_title_keyword_empty_summary">未配置关键词。开启首页卡片过滤后，标题包含关键词的推荐会被过滤。</string>
     <string name="home_recommend_title_keyword_enabled_summary">已配置 %1$d 个关键词：%2$s</string>
     <string name="home_recommend_title_keyword_dialog_title">标题关键词屏蔽</string>
     <string name="home_recommend_title_keyword_hint">使用换行、逗号或分号分隔</string>
@@ -136,7 +136,7 @@
     <string name="home_recommend_auto_refresh_title">阻止首页推荐自动刷新</string>
     <string name="home_recommend_auto_refresh_summary">阻止冷启动、长时间后台回到前台或从其他页面返回时自动刷新推荐流，保留手动刷新。</string>
     <string name="home_recommend_custom_filter_title">首页卡片过滤</string>
-    <string name="home_recommend_custom_filter_summary">选择需要从首页推荐流中屏蔽的固定卡片类型。</string>
+    <string name="home_recommend_custom_filter_summary">按标题关键词和固定类型过滤首页推荐卡片。</string>
     <string name="home_recommend_custom_filter_item_title">屏蔽类型</string>
     <string name="home_recommend_custom_filter_info_summary">勾选后对应项目会被移除；过多的屏蔽项会导致首页推荐频繁请求</string>
     <string name="home_recommend_filter_ad_title">广告</string>
@@ -153,6 +153,11 @@
     <string name="home_recommend_filter_vertical_av_summary">默认进入 story/vertical_av 的竖屏视频卡片。</string>
     <string name="home_recommend_filter_large_cover_title">大屏视频</string>
     <string name="home_recommend_filter_large_cover_summary">large_cover 或 inline 大卡视频。</string>
+    <string name="home_recommend_tab_filter_title">首页 Tab 过滤</string>
+    <string name="home_recommend_tab_filter_summary">根据已读取的首页 Tab 列表，屏蔽不需要的入口。</string>
+    <string name="home_recommend_tab_item_title">Tab</string>
+    <string name="home_recommend_tab_unavailable_summary">暂无 Tab 数据。请先重启 B 站并打开首页推荐，再回到 BBZQ 设置中选择需要屏蔽的项目。</string>
+    <string name="home_recommend_tab_info_summary">勾选后对应 Tab 会被移除；至少保留一个 Tab，避免首页无法创建页面。</string>
     <string name="home_recommend_hide_all_title">隐藏整个首页内容</string>
     <string name="home_recommend_hide_all_summary">只要是首页容器下的子页面，就把其中信息流 RecyclerView 隐藏，适合把 B 站当搜索工具使用。</string>
     <string name="home_recommend_custom_hide_title">按组件自定义隐藏</string>

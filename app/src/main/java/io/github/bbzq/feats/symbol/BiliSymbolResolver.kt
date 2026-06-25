@@ -70,6 +70,7 @@ object BiliSymbolResolver {
     private const val HP_BOTTOM_BAR_JSON_PARSER = "BottomBarHook.JsonParser"
     private const val HP_BOTTOM_BAR_RESOURCE = "BottomBarHook.ResourceManager"
     private const val HP_HOME_RECOMMEND_FEED = "HomeRecommendFeed.Pegasus"
+    private const val HP_HOME_RECOMMEND_TABS = "HomeRecommendTabs.BuildTabs"
     private const val HP_HOME_COMPONENT_HIDE = "HomeComponentHideHook.Components"
     private const val HP_HOME_COMPONENT_HIDE_CATALOG = "HomeComponentHideHook.ComponentCatalog"
     private const val HP_VIDEO_COMMENT = "VideoCommentHook.InstallPoints"
@@ -275,6 +276,9 @@ object BiliSymbolResolver {
         val homeRecommendFeed = scanHookPoint(HP_HOME_RECOMMEND_FEED, hookPoints, scanErrors, log) {
             scanHomeRecommendFeed(classLoader)
         }
+        val homeRecommendTabs = scanHookPoint(HP_HOME_RECOMMEND_TABS, hookPoints, scanErrors, log) {
+            scanHomeRecommendTabs(classLoader)
+        }
         val homeComponentHide = scanHookPoint(HP_HOME_COMPONENT_HIDE, hookPoints, scanErrors, log) {
             scanHomeComponentHide(classLoader)
         }
@@ -318,6 +322,7 @@ object BiliSymbolResolver {
             homeTopBar = homeTopBar,
             bottomBar = bottomBar,
             homeRecommendFeed = homeRecommendFeed,
+            homeRecommendTabs = homeRecommendTabs,
             homeComponentHide = homeComponentHide,
             videoComment = videoComment,
             skipVideoAd = skipVideoAd,
@@ -1339,6 +1344,80 @@ object BiliSymbolResolver {
             evidence = "responses=${responseGetItems.size},holder=${holderDataClass.name},base=${baseDataClass?.name}",
         )
         return SymbolScanResult.Found(symbols, responseGetItems.joinToString("|") { it.getItems.declaringClassName }, symbols.evidence)
+    }
+
+    private fun scanHomeRecommendTabs(
+        classLoader: ClassLoader,
+    ): SymbolScanResult<HomeRecommendTabSymbols> {
+        val homeFragmentClasses = HOME_FRAGMENT_V2_CLASSES
+            .asSequence()
+            .mapNotNull { classLoader.loadClassOrNull(it) }
+            .distinctBy { it.name }
+            .toList()
+        if (homeFragmentClasses.isEmpty()) {
+            return SymbolScanResult.Missing("HomeFragmentV2 class not found")
+        }
+
+        val buildTabMethods = homeFragmentClasses
+            .asSequence()
+            .flatMap { it.declaredMethods.asSequence() }
+            .filter { it.isHomeRecommendTabBuildMethod() }
+            .distinctBy(Method::toGenericString)
+            .toList()
+        val buildTabsMethod = buildTabMethods.singleOrNull()
+            ?: return SymbolScanResult.Missing("home recommend tab build method candidates=${buildTabMethods.size}")
+
+        val tabResourceClassName = buildTabsMethod.listParameterGenericTypeName(0)
+        val tabResourceClass = tabResourceClassName?.let(classLoader::loadClassOrNull)
+            ?: HOME_TAB_RESOURCE_CLASSES.firstNotNullOfOrNull { classLoader.loadClassOrNull(it) }
+            ?: return SymbolScanResult.Missing("home recommend tab resource class not found")
+        val stringFields = tabResourceClass.declaredFields
+            .filter { field ->
+                field.type == String::class.java &&
+                    !Modifier.isStatic(field.modifiers)
+            }
+            .onEach { it.isAccessible = true }
+        if (stringFields.size < 3) {
+            return SymbolScanResult.Missing("home recommend tab string fields not found")
+        }
+
+        val symbols = HomeRecommendTabSymbols(
+            buildTabsMethod = MethodDescriptor.of(buildTabsMethod),
+            idField = FieldDescriptor.of(stringFields[0]),
+            titleField = FieldDescriptor.of(stringFields[1]),
+            uriField = FieldDescriptor.of(stringFields[2]),
+            reporterIdField = stringFields.getOrNull(3)?.let(FieldDescriptor::of),
+            evidence = "method=${buildTabsMethod.name},resource=${tabResourceClass.name},strings=${stringFields.size}",
+        )
+        return SymbolScanResult.Found(
+            symbols,
+            "${buildTabsMethod.declaringClass.name}.${buildTabsMethod.name}",
+            symbols.evidence,
+        )
+    }
+
+    private fun Method.isHomeRecommendTabBuildMethod(): Boolean {
+        if (Modifier.isStatic(modifiers) || Modifier.isAbstract(modifiers)) return false
+        if (parameterCount != 1) return false
+        if (!List::class.java.isAssignableFrom(returnType)) return false
+        if (!List::class.java.isAssignableFrom(parameterTypes[0])) return false
+        val returnTypeName = genericReturnType.typeName
+        val parameterTypeName = genericParameterTypes.firstOrNull()?.typeName.orEmpty()
+        return "BasePrimaryMultiPageFragment" in returnTypeName &&
+            "main2.resource." in parameterTypeName
+    }
+
+    private fun Method.listParameterGenericTypeName(index: Int): String? {
+        val typeName = genericParameterTypes.getOrNull(index)?.typeName ?: return null
+        if ('<' !in typeName || '>' !in typeName) return null
+        return typeName
+            .substringAfter('<')
+            .substringBefore('>')
+            .substringBefore(',')
+            .trim()
+            .removePrefix("? extends ")
+            .removePrefix("? super ")
+            .takeIf { it.isNotBlank() }
     }
 
     private fun scanHomeComponentHide(
@@ -2549,6 +2628,14 @@ object BiliSymbolResolver {
     )
     private const val PEGASUS_HOLDER_STYLE = "com.bilibili.pegasus.HolderStyle"
     private const val AD_INFO = "com.bilibili.adcommon.data.IAdInfo"
+    private val HOME_FRAGMENT_V2_CLASSES = arrayOf(
+        "tv.danmaku.bili.ui.main2.HomeFragmentV2",
+        "tv.danmaku.p9138bili.p9228ui.main2.HomeFragmentV2",
+    )
+    private val HOME_TAB_RESOURCE_CLASSES = arrayOf(
+        "tv.danmaku.bili.ui.main2.resource.z",
+        "tv.danmaku.p9138bili.p9228ui.main2.resource.z",
+    )
     private val BASE_HOME_FRAGMENT_CLASSES = arrayOf(
         "tv.danmaku.bili.home.tab.page.BaseHomeFragment",
         "tv.danmaku.p9138bili.p9170home.p9173tab.p9174page.BaseHomeFragment",

@@ -144,6 +144,7 @@ object ConfigPorter {
     private fun refreshCachesAfterImport(prefs: SharedPreferences) {
         ModuleSettings.refreshSkipVideoAdCache(prefs)
         ModuleSettings.refreshKnownBottomBarItemsCache(prefs)
+        ModuleSettings.refreshKnownHomeRecommendTabsCache(prefs)
     }
 
     private fun buildXml(
