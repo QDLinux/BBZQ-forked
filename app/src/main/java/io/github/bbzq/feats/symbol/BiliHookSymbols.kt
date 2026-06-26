@@ -85,7 +85,7 @@ data class BiliHookSymbols(
         .putOpt("fullNumberFormat", fullNumberFormat?.toJson())
 
     companion object {
-        const val CACHE_SCHEMA_VERSION = 13
+        const val CACHE_SCHEMA_VERSION = 14
 
         fun fromJson(raw: String?): BiliHookSymbols? {
             if (raw.isNullOrBlank()) return null
@@ -137,7 +137,7 @@ data class BiliHookSymbols(
 }
 
 object DexKitRuleVersions {
-    const val CURRENT = 29
+    const val CURRENT = 30
 }
 
 data class HookPointStatus(
@@ -1507,16 +1507,20 @@ data class SkipVideoAdSymbols(
     val playViewMethods: List<MethodDescriptor>,
     val playerCoreCurrentPositionMethods: List<MethodDescriptor>,
     val playerCoreStateMethods: List<MethodDescriptor>,
+    val playerCoreSeekMethods: List<MethodDescriptor>,
     val cardCurrentPositionMethods: List<MethodDescriptor>,
     val cardStateMethods: List<MethodDescriptor>,
+    val cardSeekMethods: List<MethodDescriptor>,
     val evidence: String,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("playViewMethods", playViewMethods.toJsonArray { it.toJson() })
         .put("playerCoreCurrentPositionMethods", playerCoreCurrentPositionMethods.toJsonArray { it.toJson() })
         .put("playerCoreStateMethods", playerCoreStateMethods.toJsonArray { it.toJson() })
+        .put("playerCoreSeekMethods", playerCoreSeekMethods.toJsonArray { it.toJson() })
         .put("cardCurrentPositionMethods", cardCurrentPositionMethods.toJsonArray { it.toJson() })
         .put("cardStateMethods", cardStateMethods.toJsonArray { it.toJson() })
+        .put("cardSeekMethods", cardSeekMethods.toJsonArray { it.toJson() })
         .put("evidence", evidence)
 
     fun restore(classLoader: ClassLoader): RestoredSkipVideoAdSymbols? {
@@ -1524,8 +1528,10 @@ data class SkipVideoAdSymbols(
             playViewMethods = playViewMethods.restoreAll(classLoader) ?: return null,
             playerCoreCurrentPositionMethods = playerCoreCurrentPositionMethods.restoreAll(classLoader) ?: return null,
             playerCoreStateMethods = playerCoreStateMethods.restoreAll(classLoader) ?: return null,
+            playerCoreSeekMethods = playerCoreSeekMethods.restoreAll(classLoader) ?: return null,
             cardCurrentPositionMethods = cardCurrentPositionMethods.restoreAll(classLoader) ?: return null,
             cardStateMethods = cardStateMethods.restoreAll(classLoader) ?: return null,
+            cardSeekMethods = cardSeekMethods.restoreAll(classLoader) ?: return null,
         )
     }
 
@@ -1538,10 +1544,14 @@ data class SkipVideoAdSymbols(
             playerCoreStateMethods = obj.optJSONArray("playerCoreStateMethods").toList {
                 MethodDescriptor.fromJson(it)
             },
+            playerCoreSeekMethods = obj.optJSONArray("playerCoreSeekMethods").toList {
+                MethodDescriptor.fromJson(it)
+            },
             cardCurrentPositionMethods = obj.optJSONArray("cardCurrentPositionMethods").toList {
                 MethodDescriptor.fromJson(it)
             },
             cardStateMethods = obj.optJSONArray("cardStateMethods").toList { MethodDescriptor.fromJson(it) },
+            cardSeekMethods = obj.optJSONArray("cardSeekMethods").toList { MethodDescriptor.fromJson(it) },
             evidence = obj.optString("evidence", "-"),
         )
     }
@@ -1551,8 +1561,10 @@ data class RestoredSkipVideoAdSymbols(
     val playViewMethods: List<Method>,
     val playerCoreCurrentPositionMethods: List<Method>,
     val playerCoreStateMethods: List<Method>,
+    val playerCoreSeekMethods: List<Method>,
     val cardCurrentPositionMethods: List<Method>,
     val cardStateMethods: List<Method>,
+    val cardSeekMethods: List<Method>,
 )
 
 data class SkipVideoAdProgressSymbols(

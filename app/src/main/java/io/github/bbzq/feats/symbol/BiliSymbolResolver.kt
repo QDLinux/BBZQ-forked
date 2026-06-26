@@ -313,7 +313,7 @@ object BiliSymbolResolver {
             scanVideoComment(classLoader)
         }
         val skipVideoAd = scanHookPoint(HP_SKIP_VIDEO_AD, hookPoints, scanErrors, log) {
-            scanSkipVideoAd(classLoader)
+            scanSkipVideoAd(classLoader, ::bridge)
         }
         val skipVideoAdProgress = scanHookPoint(HP_SKIP_VIDEO_AD_PROGRESS, hookPoints, scanErrors, log) {
             scanSkipVideoAdProgress(classLoader)
@@ -1021,6 +1021,21 @@ object BiliSymbolResolver {
         } else {
             HookPointStatus.optional(id, missing)
         }
+
+    private fun skipVideoAdControllerHookPoint(
+        id: String,
+        scan: ControllerClassScan,
+        ready: Boolean,
+        missing: String,
+        evidence: String,
+    ): HookPointStatus {
+        if (ready) {
+            val scanEvidence = scan.error?.let { "$evidence,scanError=${it.take(180)}" } ?: evidence
+            return HookPointStatus.found(id, id.substringAfterLast('.'), scanEvidence)
+        }
+        return scan.error?.let { HookPointStatus.error(id, "fail closed: ${it.take(240)}") }
+            ?: HookPointStatus.optional(id, missing)
+    }
 
     private fun Class<*>.findMethod(name: String, returnType: Class<*>, vararg parameterTypes: Class<*>): Method? =
         allMethods().firstOrNull {
@@ -1993,6 +2008,7 @@ object BiliSymbolResolver {
 
     private fun scanSkipVideoAd(
         classLoader: ClassLoader,
+        bridge: () -> DexKitBridge?,
     ): SymbolScanResult<SkipVideoAdSymbols> {
         val playViewMethods = PLAYER_MOSS_CANDIDATES
             .asSequence()
@@ -2007,40 +2023,60 @@ object BiliSymbolResolver {
             }
             .distinctBy(Method::toGenericString)
             .toList()
-        val playerCoreClasses = (listOf(PLAYER_CORE_SERVICE_INTERFACE) + PLAYER_CORE_SERVICE_CANDIDATES)
-            .mapNotNull { classLoader.loadClassOrNull(it) }
-            .distinctBy { it.name }
-        val cardClasses = (listOf(CARD_PLAYER_CONTEXT_INTERFACE) + CARD_PLAYER_CONTEXT_CANDIDATES)
-            .mapNotNull { classLoader.loadClassOrNull(it) }
-            .distinctBy { it.name }
+        val playerCoreScan = findConcreteImplementors(
+            classLoader = classLoader,
+            bridge = bridge,
+            interfaceName = PLAYER_CORE_SERVICE_INTERFACE,
+        )
+        val cardScan = findConcreteImplementors(
+            classLoader = classLoader,
+            bridge = bridge,
+            interfaceName = CARD_PLAYER_CONTEXT_INTERFACE,
+        )
+        val playerCoreClasses = playerCoreScan.classes
+        val cardClasses = cardScan.classes
         val playerCoreCurrent = playerCoreClasses.flatMap { it.currentPositionMethods() }.distinctBy(Method::toGenericString)
         val playerCoreState = playerCoreClasses.flatMap { it.stateMethods(STATE_METHOD_NAMES) }.distinctBy(Method::toGenericString)
+        val playerCoreSeek = playerCoreClasses.flatMap { it.seekMethods() }.distinctBy(Method::toGenericString)
         val cardCurrent = cardClasses.flatMap { it.currentPositionMethods() }.distinctBy(Method::toGenericString)
         val cardState = cardClasses.flatMap { it.stateMethods(CARD_STATE_METHOD_NAMES) }.distinctBy(Method::toGenericString)
-        val total = playViewMethods.size + playerCoreCurrent.size + playerCoreState.size + cardCurrent.size + cardState.size
-        if (total == 0) return SymbolScanResult.Missing("skip video ad hook points not found")
+        val cardSeek = cardClasses.flatMap { it.seekMethods() }.distinctBy(Method::toGenericString)
+        val playerCoreReady = playerCoreCurrent.isNotEmpty() && playerCoreState.isNotEmpty() && playerCoreSeek.isNotEmpty()
+        val cardReady = cardCurrent.isNotEmpty() && cardState.isNotEmpty() && cardSeek.isNotEmpty()
+        val hookPoints = listOf(
+            childHookPoint(HP_SKIP_VIDEO_AD_PLAY_VIEW, playViewMethods.isNotEmpty(), "play view hook methods not found", "methods=${playViewMethods.size}"),
+            skipVideoAdControllerHookPoint(
+                id = HP_SKIP_VIDEO_AD_PLAYER_CORE,
+                scan = playerCoreScan,
+                ready = playerCoreReady,
+                missing = "player core position/state/seek methods not found",
+                evidence = "classes=${playerCoreClasses.size},current=${playerCoreCurrent.size},state=${playerCoreState.size},seek=${playerCoreSeek.size}",
+            ),
+            skipVideoAdControllerHookPoint(
+                id = HP_SKIP_VIDEO_AD_CARD,
+                scan = cardScan,
+                ready = cardReady,
+                missing = "card player position/state/seek methods not found",
+                evidence = "classes=${cardClasses.size},current=${cardCurrent.size},state=${cardState.size},seek=${cardSeek.size}",
+            ),
+        )
+        val missingReason = when {
+            playViewMethods.isEmpty() -> "skip video ad play view hook points not found"
+            !playerCoreReady && !cardReady -> "skip video ad controller hook points not found"
+            else -> null
+        }
+        if (missingReason != null) {
+            return SymbolScanResult.Missing(missingReason, hookPoints)
+        }
         val symbols = SkipVideoAdSymbols(
             playViewMethods = playViewMethods.map(MethodDescriptor::of),
             playerCoreCurrentPositionMethods = playerCoreCurrent.map(MethodDescriptor::of),
             playerCoreStateMethods = playerCoreState.map(MethodDescriptor::of),
+            playerCoreSeekMethods = playerCoreSeek.map(MethodDescriptor::of),
             cardCurrentPositionMethods = cardCurrent.map(MethodDescriptor::of),
             cardStateMethods = cardState.map(MethodDescriptor::of),
-            evidence = "play=${playViewMethods.size},core=${playerCoreCurrent.size}/${playerCoreState.size},card=${cardCurrent.size}/${cardState.size}",
-        )
-        val hookPoints = listOf(
-            childHookPoint(HP_SKIP_VIDEO_AD_PLAY_VIEW, playViewMethods.isNotEmpty(), "play view hook methods not found", "methods=${playViewMethods.size}"),
-            optionalChildHookPoint(
-                HP_SKIP_VIDEO_AD_PLAYER_CORE,
-                playerCoreCurrent.isNotEmpty() && playerCoreState.isNotEmpty(),
-                "player core position/state methods not found",
-                "current=${playerCoreCurrent.size},state=${playerCoreState.size}",
-            ),
-            optionalChildHookPoint(
-                HP_SKIP_VIDEO_AD_CARD,
-                cardCurrent.isNotEmpty() && cardState.isNotEmpty(),
-                "card player position/state methods not found",
-                "current=${cardCurrent.size},state=${cardState.size}",
-            ),
+            cardSeekMethods = cardSeek.map(MethodDescriptor::of),
+            evidence = "play=${playViewMethods.size},core=${playerCoreCurrent.size}/${playerCoreState.size}/${playerCoreSeek.size},card=${cardCurrent.size}/${cardState.size}/${cardSeek.size}",
         )
         return SymbolScanResult.Found(symbols, "SkipVideoAd", symbols.evidence, hookPoints)
     }
@@ -2610,6 +2646,48 @@ object BiliSymbolResolver {
             methods.any { it.name == "getVod" && it.parameterCount == 0 }
     }
 
+    private fun findConcreteImplementors(
+        classLoader: ClassLoader,
+        bridge: () -> DexKitBridge?,
+        interfaceName: String,
+    ): ControllerClassScan {
+        val candidates = linkedSetOf<Class<*>>()
+        val errors = ArrayList<String>()
+        val currentBridge = bridge()
+        if (currentBridge != null) {
+            runCatching {
+                currentBridge.findClass(
+                    FindClass.create()
+                        .matcher(ClassMatcher.create().addInterface(interfaceName)),
+                )
+            }.onFailure { throwable ->
+                errors += "DexKit implementor search failed for $interfaceName: ${throwable.scanMessage()}"
+            }.getOrNull()?.forEach { classData ->
+                runCatching {
+                    Class.forName(classData.name, false, classLoader)
+                }.onSuccess { type ->
+                    candidates += type
+                }.onFailure { throwable ->
+                    errors += "restore ${classData.name} failed: ${throwable.scanMessage()}"
+                }
+            }
+        } else {
+            errors += "DexKitBridge unavailable for $interfaceName"
+        }
+
+        val interfaceType = classLoader.loadClassOrNull(interfaceName)
+        val classes = candidates
+            .asSequence()
+            .filter { type -> type.isConcreteHookClass() }
+            .filter { type -> interfaceType?.isAssignableFrom(type) == true }
+            .distinctBy { it.name }
+            .toList()
+        return ControllerClassScan(
+            classes = classes,
+            error = errors.takeIf { it.isNotEmpty() }?.joinToString("; ")?.take(360),
+        )
+    }
+
     private fun Class<*>.currentPositionMethods(): List<Method> =
         allMethods()
             .filter {
@@ -2632,16 +2710,37 @@ object BiliSymbolResolver {
             .onEach { it.isAccessible = true }
             .toList()
 
+    private fun Class<*>.seekMethods(): List<Method> =
+        allMethods()
+            .filter {
+                it.isConcreteInstanceHookMethod() &&
+                    it.isSeekToMethod()
+            }
+            .onEach { it.isAccessible = true }
+            .toList()
+
     private fun Method.isConcreteInstanceHookMethod(): Boolean =
         !Modifier.isStatic(modifiers) &&
             !Modifier.isAbstract(modifiers) &&
             !declaringClass.isInterface
+
+    private fun Class<*>.isConcreteHookClass(): Boolean =
+        !isInterface && !Modifier.isAbstract(modifiers)
+
+    private fun Method.isSeekToMethod(): Boolean {
+        if (name != "seekTo" || parameterCount !in 1..2) return false
+        if (!parameterTypes[0].isNumericType()) return false
+        return parameterCount == 1 || parameterTypes[1].isBooleanType()
+    }
 
     private fun Class<*>.isNumericType(): Boolean =
         this == Int::class.javaPrimitiveType ||
             this == Int::class.javaObjectType ||
             this == Long::class.javaPrimitiveType ||
             this == Long::class.javaObjectType
+
+    private fun Class<*>.isBooleanType(): Boolean =
+        this == Boolean::class.javaPrimitiveType || this == Boolean::class.javaObjectType
 
     private fun Method.isDetailLikeInflateMethod(): Boolean {
         if (name != "b" || parameterCount != 3) return false
@@ -3067,16 +3166,9 @@ object BiliSymbolResolver {
     private val PLAY_VIEW_METHOD_NAMES = setOf("executePlayViewUnite", "playViewUnite")
     private val STATE_METHOD_NAMES = setOf("getState")
     private val CARD_STATE_METHOD_NAMES = setOf("getPlayerState", "getState")
-    private val PLAYER_CORE_SERVICE_CANDIDATES = arrayOf(
-        "tv.danmaku.biliplayerv2.service.PlayerCoreService",
-        "tv.danmaku.biliplayerimpl.core.PlayerCoreService",
-        "com.bilibili.playerbizcommon.service.PlayerCoreService",
-    )
-    private val CARD_PLAYER_CONTEXT_CANDIDATES = arrayOf(
-        "tv.danmaku.video.bilicardplayer.CardPlayerContext",
-    )
     private val PLAYER_MOSS_CANDIDATES = arrayOf(
         "com.bapis.bilibili.app.playerunite.v1.PlayerMoss",
+        "com.bapis.bilibili.app.playerunite.v1.KPlayerMoss",
         "com.bapis.bilibili.p4218app.playerunite.p4240v1.PlayerMoss",
         "com.bapis.bilibili.p4218app.playerunite.p4240v1.KPlayerMoss",
     )
@@ -3199,6 +3291,11 @@ private data class HomeRequestParamSymbols(
     val idxField: java.lang.reflect.Field,
     val refreshField: java.lang.reflect.Field,
     val flushField: java.lang.reflect.Field,
+)
+
+private data class ControllerClassScan(
+    val classes: List<Class<*>>,
+    val error: String?,
 )
 
 private sealed class SymbolScanResult<out T> {
