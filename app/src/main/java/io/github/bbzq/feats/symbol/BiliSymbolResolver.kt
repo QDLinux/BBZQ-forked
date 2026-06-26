@@ -75,6 +75,7 @@ object BiliSymbolResolver {
     private const val HP_STORY_COMPONENT_ALPHA_INFO = "StoryComponentAlphaHook.InfoModule"
     private const val HP_STORY_COMPONENT_ALPHA_RIGHT = "StoryComponentAlphaHook.RightModule"
     private const val HP_STORY_COMPONENT_ALPHA_BOTTOM = "StoryComponentAlphaHook.BottomModule"
+    private const val HP_STORY_COMPONENT_ALPHA_SEEKBAR = "StoryComponentAlphaHook.SeekBar"
     private const val HP_STORY_COMPONENT_ALPHA_TOP = "StoryComponentAlphaHook.TopControls"
     private const val HP_VIDEO_DETAIL_BANNER_AD = "VideoDetailBannerAdHook.InstallPoints"
     private const val HP_VIDEO_DETAIL_BANNER_PROXY = "VideoDetailBannerAdHook.Proxy"
@@ -1426,12 +1427,15 @@ object BiliSymbolResolver {
             ?: return SymbolScanResult.Missing("story right module class not found")
         val bottomModule = classLoader.loadClassOrNull(STORY_BOTTOM_MODULE)
             ?: return SymbolScanResult.Missing("story bottom module class not found")
+        val storySeekBar = classLoader.loadClassOrNull(STORY_SEEK_BAR_CLASS)
+            ?: return SymbolScanResult.Missing("story seek bar class not found")
         val storyFragment = classLoader.loadClassOrNull(STORY_VIDEO_FRAGMENT)
             ?: return SymbolScanResult.Missing("story video fragment class not found")
 
         val infoConstructors = infoModule.storyModuleConstructors()
         val rightConstructors = rightModule.storyModuleConstructors()
         val bottomConstructors = bottomModule.storyModuleConstructors()
+        val seekBarConstructors = storySeekBar.storyViewConstructors()
         val onCreateView = storyFragment.findMethod(
             "onCreateView",
             View::class.java,
@@ -1441,10 +1445,17 @@ object BiliSymbolResolver {
         )?.takeIf { it.declaringClass.name == STORY_VIDEO_FRAGMENT }
             ?.apply { isAccessible = true }
 
-        if (infoConstructors.isEmpty() || rightConstructors.isEmpty() || bottomConstructors.isEmpty() || onCreateView == null) {
+        if (
+            infoConstructors.isEmpty() ||
+            rightConstructors.isEmpty() ||
+            bottomConstructors.isEmpty() ||
+            seekBarConstructors.isEmpty() ||
+            onCreateView == null
+        ) {
             return SymbolScanResult.Missing(
                 "story component alpha hook points not found: " +
-                    "info=${infoConstructors.size},right=${rightConstructors.size},bottom=${bottomConstructors.size},top=${onCreateView != null}",
+                    "info=${infoConstructors.size},right=${rightConstructors.size},bottom=${bottomConstructors.size}," +
+                    "seekBar=${seekBarConstructors.size},top=${onCreateView != null}",
             )
         }
 
@@ -1452,8 +1463,10 @@ object BiliSymbolResolver {
             infoConstructors = infoConstructors.map(ConstructorDescriptor::of),
             rightConstructors = rightConstructors.map(ConstructorDescriptor::of),
             bottomConstructors = bottomConstructors.map(ConstructorDescriptor::of),
+            seekBarConstructors = seekBarConstructors.map(ConstructorDescriptor::of),
             fragmentOnCreateView = MethodDescriptor.of(onCreateView),
-            evidence = "info=${infoConstructors.size},right=${rightConstructors.size},bottom=${bottomConstructors.size},top=${onCreateView.name}",
+            evidence = "info=${infoConstructors.size},right=${rightConstructors.size},bottom=${bottomConstructors.size}," +
+                "seekBar=${seekBarConstructors.size},top=${onCreateView.name}",
         )
         val hookPoints = listOf(
             childHookPoint(
@@ -1473,6 +1486,12 @@ object BiliSymbolResolver {
                 bottomConstructors.isNotEmpty(),
                 "story bottom constructors not found",
                 "constructors=${bottomConstructors.size}",
+            ),
+            childHookPoint(
+                HP_STORY_COMPONENT_ALPHA_SEEKBAR,
+                seekBarConstructors.isNotEmpty(),
+                "story seek bar constructors not found",
+                "constructors=${seekBarConstructors.size}",
             ),
             childHookPoint(
                 HP_STORY_COMPONENT_ALPHA_TOP,
@@ -1512,6 +1531,18 @@ object BiliSymbolResolver {
                     params.size in 1..2 &&
                         params[0] == Context::class.java &&
                         (params.size == 1 || params[1] == AttributeSet::class.java)
+                }
+            }
+            .onEach { it.isAccessible = true }
+
+    private fun Class<*>.storyViewConstructors() =
+        declaredConstructors
+            .filter { constructor ->
+                constructor.parameterTypes.let { params ->
+                    params.size in 1..3 &&
+                        params[0] == Context::class.java &&
+                        (params.size == 1 || params[1] == AttributeSet::class.java) &&
+                        (params.size < 3 || params[2] == Int::class.javaPrimitiveType)
                 }
             }
             .onEach { it.isAccessible = true }

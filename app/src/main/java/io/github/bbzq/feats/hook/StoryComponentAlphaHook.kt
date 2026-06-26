@@ -32,8 +32,9 @@ class StoryComponentAlphaHook(env: RoamingEnv) : BaseRoamingHook(env) {
         hookCount += installModuleConstructorHooks(symbols.infoConstructors, alpha, "StoryInfoModule")
         hookCount += installModuleConstructorHooks(symbols.rightConstructors, alpha, "StoryRightModule")
         hookCount += installModuleConstructorHooks(symbols.bottomConstructors, alpha, "StoryBottomModule")
+        hookCount += installModuleConstructorHooks(symbols.seekBarConstructors, alpha, "StorySeekBar")
         hookCount += installTopControlsHook(symbols.fragmentOnCreateView, alpha)
-        hookCount += installTopControlsAlphaWatcher(alpha)
+        hookCount += installComponentAlphaWatcher(alpha)
         log("startHook: StoryComponentAlpha methods=$hookCount alpha=$alpha")
     }
 
@@ -44,7 +45,7 @@ class StoryComponentAlphaHook(env: RoamingEnv) : BaseRoamingHook(env) {
     ): Int {
         constructors.forEach { constructor ->
             env.hookAfter(constructor) { param ->
-                (param.thisObject as? View)?.applyComponentAlpha(alpha)
+                (param.thisObject as? View)?.trackAndApplyComponentAlpha(alpha)
             }
             log("startHook: StoryComponentAlpha at ${constructor.declaringClass.name}.$label")
         }
@@ -54,18 +55,17 @@ class StoryComponentAlphaHook(env: RoamingEnv) : BaseRoamingHook(env) {
     private fun installTopControlsHook(method: Method, alpha: Float): Int {
         env.hookAfter(method) { param ->
             val topControls = (param.result as? ViewGroup)?.findStoryTopControls() ?: return@hookAfter
-            trackTopControls(topControls)
             topControls
-                .applyComponentAlpha(alpha)
+                .trackAndApplyComponentAlpha(alpha)
         }
         log("startHook: StoryComponentAlpha at ${method.declaringClass.name}.${method.name}")
         return 1
     }
 
-    private fun installTopControlsAlphaWatcher(alpha: Float): Int {
+    private fun installComponentAlphaWatcher(alpha: Float): Int {
         synchronized(StoryComponentAlphaHook::class.java) {
-            if (topControlsAlphaWatcherInstalled) return 0
-            topControlsAlphaWatcherInstalled = true
+            if (componentAlphaWatcherInstalled) return 0
+            componentAlphaWatcherInstalled = true
         }
         val method = View::class.java.getDeclaredMethod(
             "setAlpha",
@@ -73,7 +73,7 @@ class StoryComponentAlphaHook(env: RoamingEnv) : BaseRoamingHook(env) {
         )
         env.hookBefore(method) { param ->
             val view = param.thisObject as? View ?: return@hookBefore
-            if (!isTrackedTopControls(view)) return@hookBefore
+            if (!isTrackedComponentView(view)) return@hookBefore
             val requested = param.args.firstOrNull() as? Float ?: return@hookBefore
             if (requested > alpha) {
                 param.args[0] = alpha
@@ -83,7 +83,8 @@ class StoryComponentAlphaHook(env: RoamingEnv) : BaseRoamingHook(env) {
         return 1
     }
 
-    private fun View.applyComponentAlpha(alpha: Float) {
+    private fun View.trackAndApplyComponentAlpha(alpha: Float) {
+        trackComponentView(this)
         this.alpha = min(this.alpha, alpha)
     }
 
@@ -99,18 +100,18 @@ class StoryComponentAlphaHook(env: RoamingEnv) : BaseRoamingHook(env) {
 
     private companion object {
         private const val TOP_CONTROLS_CLASS_NAME = "androidx.constraintlayout.widget.ConstraintLayout"
-        private val trackedTopControls = WeakHashMap<View, Boolean>()
-        private var topControlsAlphaWatcherInstalled = false
+        private val trackedComponentViews = WeakHashMap<View, Boolean>()
+        private var componentAlphaWatcherInstalled = false
 
-        private fun trackTopControls(view: View) {
-            synchronized(trackedTopControls) {
-                trackedTopControls[view] = true
+        private fun trackComponentView(view: View) {
+            synchronized(trackedComponentViews) {
+                trackedComponentViews[view] = true
             }
         }
 
-        private fun isTrackedTopControls(view: View): Boolean =
-            synchronized(trackedTopControls) {
-                trackedTopControls.containsKey(view)
+        private fun isTrackedComponentView(view: View): Boolean =
+            synchronized(trackedComponentViews) {
+                trackedComponentViews.containsKey(view)
             }
     }
 }

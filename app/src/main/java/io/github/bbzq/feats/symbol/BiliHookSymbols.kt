@@ -87,7 +87,7 @@ data class BiliHookSymbols(
         .putOpt("fullNumberFormat", fullNumberFormat?.toJson())
 
     companion object {
-        const val CACHE_SCHEMA_VERSION = 17
+        const val CACHE_SCHEMA_VERSION = 18
 
         fun fromJson(raw: String?): BiliHookSymbols? {
             if (raw.isNullOrBlank()) return null
@@ -956,6 +956,7 @@ data class StoryComponentAlphaSymbols(
     val infoConstructors: List<ConstructorDescriptor>,
     val rightConstructors: List<ConstructorDescriptor>,
     val bottomConstructors: List<ConstructorDescriptor>,
+    val seekBarConstructors: List<ConstructorDescriptor>,
     val fragmentOnCreateView: MethodDescriptor,
     val evidence: String,
 ) {
@@ -963,6 +964,7 @@ data class StoryComponentAlphaSymbols(
         .put("infoConstructors", infoConstructors.toJsonArray { it.toJson() })
         .put("rightConstructors", rightConstructors.toJsonArray { it.toJson() })
         .put("bottomConstructors", bottomConstructors.toJsonArray { it.toJson() })
+        .put("seekBarConstructors", seekBarConstructors.toJsonArray { it.toJson() })
         .put("fragmentOnCreateView", fragmentOnCreateView.toJson())
         .put("evidence", evidence)
 
@@ -970,6 +972,7 @@ data class StoryComponentAlphaSymbols(
         val infoType = classLoader.loadClassOrNull(STORY_INFO_MODULE) ?: return null
         val rightType = classLoader.loadClassOrNull(STORY_RIGHT_MODULE) ?: return null
         val bottomType = classLoader.loadClassOrNull(STORY_BOTTOM_MODULE) ?: return null
+        val seekBarType = classLoader.loadClassOrNull(STORY_SEEK_BAR) ?: return null
         return RestoredStoryComponentAlphaSymbols(
             infoConstructors = infoConstructors.mapNotNull { it.restore(infoType) }
                 .takeIf { it.size == infoConstructors.size } ?: return null,
@@ -977,6 +980,8 @@ data class StoryComponentAlphaSymbols(
                 .takeIf { it.size == rightConstructors.size } ?: return null,
             bottomConstructors = bottomConstructors.mapNotNull { it.restore(bottomType) }
                 .takeIf { it.size == bottomConstructors.size } ?: return null,
+            seekBarConstructors = seekBarConstructors.mapNotNull { it.restore(seekBarType) }
+                .takeIf { it.size == seekBarConstructors.size } ?: return null,
             fragmentOnCreateView = fragmentOnCreateView.restoreOptional(classLoader) ?: return null,
         )
     }
@@ -986,6 +991,7 @@ data class StoryComponentAlphaSymbols(
             infoConstructors = obj.optJSONArray("infoConstructors").toList { ConstructorDescriptor.fromJson(it) },
             rightConstructors = obj.optJSONArray("rightConstructors").toList { ConstructorDescriptor.fromJson(it) },
             bottomConstructors = obj.optJSONArray("bottomConstructors").toList { ConstructorDescriptor.fromJson(it) },
+            seekBarConstructors = obj.optJSONArray("seekBarConstructors").toList { ConstructorDescriptor.fromJson(it) },
             fragmentOnCreateView = MethodDescriptor.fromJson(obj.getJSONObject("fragmentOnCreateView")),
             evidence = obj.optString("evidence", "-"),
         )
@@ -993,6 +999,7 @@ data class StoryComponentAlphaSymbols(
         private const val STORY_INFO_MODULE = "com.bilibili.video.story.module.StoryInfoModule"
         private const val STORY_RIGHT_MODULE = "com.bilibili.video.story.module.StoryRightModule"
         private const val STORY_BOTTOM_MODULE = "com.bilibili.video.story.module.StoryBottomModule"
+        private const val STORY_SEEK_BAR = "com.bilibili.video.story.view.StorySeekBar"
     }
 }
 
@@ -1000,6 +1007,7 @@ data class RestoredStoryComponentAlphaSymbols(
     val infoConstructors: List<Constructor<*>>,
     val rightConstructors: List<Constructor<*>>,
     val bottomConstructors: List<Constructor<*>>,
+    val seekBarConstructors: List<Constructor<*>>,
     val fragmentOnCreateView: Method,
 )
 
