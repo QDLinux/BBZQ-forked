@@ -4,10 +4,10 @@ import android.text.Html
 import android.text.Spanned
 
 /**
- * 将 GitHub Release 的轻量 Markdown（标题、无序列表、加粗、行内代码、链接）
- * 转换为可在 TextView / AlertDialog 中渲染的富文本。
+ * 将 GitHub Release 的轻量 Markdown 转换为可在 TextView / AlertDialog 中渲染的富文本。
  *
- * 仅覆盖 Release Notes 常见语法，不追求完整 Markdown 兼容。
+ * 支持：# / ## / ### 标题（映射为 h2/h3/h4，呈现字号层次）、有序与无序列表、
+ * 引用、加粗、行内代码、链接。仅覆盖 Release Notes 常见语法，不追求完整 Markdown 兼容。
  */
 object MarkdownFormatter {
 
@@ -25,27 +25,30 @@ object MarkdownFormatter {
         val builder = StringBuilder()
         val lines = markdown.replace("\r\n", "\n").replace('\r', '\n').split('\n')
         for (raw in lines) {
-            val line = raw.trimEnd()
-            val trimmed = line.trimStart()
+            val line = raw.trim()
             when {
-                trimmed.isEmpty() -> builder.append("<br>")
+                line.isEmpty() -> builder.append("<br>")
 
-                trimmed.startsWith("### ") ->
-                    builder.append("<b>").append(inline(trimmed.removePrefix("### "))).append("</b><br>")
+                // 标题用 h 标签获得字号层次（h2>h3>h4，自带加粗与段落间距），不再额外加 <br>。
+                line.startsWith("### ") ->
+                    builder.append("<h4>").append(inline(line.removePrefix("### "))).append("</h4>")
 
-                trimmed.startsWith("## ") ->
-                    builder.append("<b>").append(inline(trimmed.removePrefix("## "))).append("</b><br>")
+                line.startsWith("## ") ->
+                    builder.append("<h3>").append(inline(line.removePrefix("## "))).append("</h3>")
 
-                trimmed.startsWith("# ") ->
-                    builder.append("<b>").append(inline(trimmed.removePrefix("# "))).append("</b><br>")
+                line.startsWith("# ") ->
+                    builder.append("<h2>").append(inline(line.removePrefix("# "))).append("</h2>")
 
-                trimmed.startsWith("> ") ->
-                    builder.append("<i>").append(inline(trimmed.removePrefix("> "))).append("</i><br>")
+                line.startsWith("> ") ->
+                    builder.append("<i>").append(inline(line.removePrefix("> "))).append("</i><br>")
 
-                trimmed.startsWith("- ") || trimmed.startsWith("* ") ->
-                    builder.append("• ").append(inline(trimmed.substring(2))).append("<br>")
+                line.startsWith("- ") || line.startsWith("* ") ->
+                    builder.append("&nbsp;&nbsp;•&nbsp;").append(inline(line.substring(2))).append("<br>")
 
-                else -> builder.append(inline(trimmed)).append("<br>")
+                ORDERED_LIST_REGEX.containsMatchIn(line) ->
+                    builder.append("&nbsp;&nbsp;").append(inline(line)).append("<br>")
+
+                else -> builder.append(inline(line)).append("<br>")
             }
         }
         return builder.toString()
@@ -105,5 +108,6 @@ object MarkdownFormatter {
     private val LINK_REGEX = Regex("""\[([^\]]+)]\(([^)]+)\)""")
     private val BOLD_REGEX = Regex("""\*\*([^*]+)\*\*""")
     private val CODE_REGEX = Regex("""`([^`]+)`""")
+    private val ORDERED_LIST_REGEX = Regex("""^\d+\.\s""")
 }
 

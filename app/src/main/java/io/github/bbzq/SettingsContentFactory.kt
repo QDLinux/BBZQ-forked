@@ -776,11 +776,19 @@ class SettingsContentFactory(
             result.currentVersion ?: BuildConfig.RELEASE_NAME,
             BuildConfig.VERSION_CODE,
         )
-        val header = context.getString(
-            R.string.check_update_dialog_message,
-            latestVersionText,
-            currentVersionText,
-        )
+        val header = buildString {
+            append(
+                context.getString(
+                    R.string.check_update_dialog_message,
+                    latestVersionText,
+                    currentVersionText,
+                ),
+            )
+            if (result.apkSizeBytes > 0) {
+                append('\n')
+                append(context.getString(R.string.check_update_apk_size, formatSize(result.apkSizeBytes)))
+            }
+        }
         val notesRaw = result.releaseNotes?.takeIf { it.isNotBlank() }
         val notesSpanned = notesRaw?.let { MarkdownFormatter.toSpanned(it) }
             ?: android.text.SpannableString(context.getString(R.string.check_update_notes_empty))
@@ -825,6 +833,16 @@ class SettingsContentFactory(
         } else {
             version
         }
+
+    /** 将字节数格式化为可读大小（KB/MB）。 */
+    private fun formatSize(bytes: Long): String {
+        val kb = bytes / 1024.0
+        return if (kb < 1024) {
+            String.format(Locale.getDefault(), "%.1f KB", kb)
+        } else {
+            String.format(Locale.getDefault(), "%.1f MB", kb / 1024.0)
+        }
+    }
 
     private fun handleAccessKeyClick() {
         val key = AccessKeyRepository.read(prefs)
@@ -1802,6 +1820,6 @@ class SettingsContentFactory(
         private const val VERSION_TAP_WINDOW_MS = 1500L
         private const val TITLE_KEYWORD_SUMMARY_MAX_ITEMS = 4
         private const val RELEASE_PAGE_URL =
-            "https://github.com/HSSkyBoy/BBZQ/releases/latest"
+            "https://github.com/Xposed-Modules-Repo/io.github.bbzq/releases/latest"
     }
 }
