@@ -43,12 +43,15 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     private var waitTime = CHECK_INTERVAL_MS
     private var playerCoreServiceRef: WeakReference<Any>? = null
     private var cardPlayerContextRef: WeakReference<Any>? = null
+    private var storyPlayerRef: WeakReference<Any>? = null
     private val reflectionFailureLogs = ConcurrentHashMap.newKeySet<String>()
     private val seekMethodsByControllerClass = ConcurrentHashMap<Class<*>, List<Method>>()
     private val playerCoreService: Any?
         get() = playerCoreServiceRef?.get()
     private val cardPlayerContext: Any?
         get() = cardPlayerContextRef?.get()
+    private val storyPlayer: Any?
+        get() = storyPlayerRef?.get()
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
     override fun startHook() {
@@ -69,7 +72,8 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
         cacheSeekMethods(symbols)
         val count = installHookGroup("playView") { hookPlayViewUnite(symbols) } +
             installHookGroup("playerCore") { hookPlayerCoreService(symbols) } +
-            installHookGroup("cardPlayer") { hookCardPlayerContext(symbols) }
+            installHookGroup("cardPlayer") { hookCardPlayerContext(symbols) } +
+            installHookGroup("storyPlayer") { hookStoryPlayer(symbols) }
         log("startHook: SkipVideoAd, methods=$count")
         if (count == 0 && env.processName == env.packageName) {
             toast("跳过视频广告未找到播放器接口")
@@ -193,6 +197,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
         SkipVideoAdState.activateVideo(identity)
         playerCoreService?.let { SkipVideoAdState.bindController(it, identity.key) }
         cardPlayerContext?.let { SkipVideoAdState.bindController(it, identity.key) }
+        storyPlayer?.let { SkipVideoAdState.bindController(it, identity.key) }
         autoSkippedSegments.clear()
         manualNotifiedSegments.clear()
         waitTime = CHECK_INTERVAL_MS
@@ -200,25 +205,55 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     }
 
     private fun hookPlayerCoreService(symbols: RestoredSkipVideoAdSymbols): Int {
-        return hookCurrentPositionMethods(symbols.playerCoreCurrentPositionMethods, STATE_METHOD_NAMES) +
-            hookPlayerStateMethods(symbols.playerCoreStateMethods, STATE_METHOD_NAMES)
+        return hookCurrentPositionMethods(
+            methods = symbols.playerCoreCurrentPositionMethods,
+            stateMethodNames = STATE_METHOD_NAMES,
+            controllerKind = ControllerKind.PLAYER_CORE,
+        ) + hookPlayerStateMethods(
+            methods = symbols.playerCoreStateMethods,
+            stateMethodNames = STATE_METHOD_NAMES,
+            controllerKind = ControllerKind.PLAYER_CORE,
+        )
     }
 
     private fun hookCardPlayerContext(symbols: RestoredSkipVideoAdSymbols): Int {
-        return hookCurrentPositionMethods(symbols.cardCurrentPositionMethods, CARD_STATE_METHOD_NAMES) +
-            hookPlayerStateMethods(symbols.cardStateMethods, CARD_STATE_METHOD_NAMES)
+        return hookCurrentPositionMethods(
+            methods = symbols.cardCurrentPositionMethods,
+            stateMethodNames = CARD_STATE_METHOD_NAMES,
+            controllerKind = ControllerKind.CARD,
+        ) + hookPlayerStateMethods(
+            methods = symbols.cardStateMethods,
+            stateMethodNames = CARD_STATE_METHOD_NAMES,
+            controllerKind = ControllerKind.CARD,
+        )
+    }
+
+    private fun hookStoryPlayer(symbols: RestoredSkipVideoAdSymbols): Int {
+        return hookCurrentPositionMethods(
+            methods = symbols.storyCurrentPositionMethods,
+            stateMethodNames = STORY_STATE_METHOD_NAMES,
+            controllerKind = ControllerKind.STORY,
+        ) + hookPlayerStateMethods(
+            methods = symbols.storyStateMethods,
+            stateMethodNames = STORY_STATE_METHOD_NAMES,
+            controllerKind = ControllerKind.STORY,
+        )
     }
 
     private fun cacheSeekMethods(symbols: RestoredSkipVideoAdSymbols) {
         seekMethodsByControllerClass.clear()
-        (symbols.playerCoreSeekMethods + symbols.cardSeekMethods)
+        (symbols.playerCoreSeekMethods + symbols.cardSeekMethods + symbols.storySeekMethods)
             .groupBy { it.declaringClass }
             .forEach { (type, methods) ->
                 seekMethodsByControllerClass[type] = methods.distinctBy(Method::toGenericString)
             }
     }
 
-    private fun hookCurrentPositionMethods(methods: List<Method>, stateMethodNames: Set<String>): Int {
+    private fun hookCurrentPositionMethods(
+        methods: List<Method>,
+        stateMethodNames: Set<String>,
+        controllerKind: ControllerKind,
+    ): Int {
         var count = 0
         methods.forEach { method ->
             runCatching {
@@ -226,7 +261,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
                     runCatching {
                         if (!isEnabled()) return@runCatching
                         val controller = param.thisObject ?: return@runCatching
-                        val key = rememberPlayerController(controller, stateMethodNames)
+                        val key = rememberPlayerController(controller, controllerKind)
                         if (duration <= 0) {
                             duration = resolveDuration(controller)
                             if (duration > 0) {
@@ -261,7 +296,11 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
         return count
     }
 
-    private fun hookPlayerStateMethods(methods: List<Method>, stateMethodNames: Set<String>): Int {
+    private fun hookPlayerStateMethods(
+        methods: List<Method>,
+        stateMethodNames: Set<String>,
+        controllerKind: ControllerKind,
+    ): Int {
         var count = 0
         methods.forEach { method ->
             runCatching {
@@ -269,7 +308,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
                     runCatching {
                         if (!isEnabled()) return@runCatching
                         val controller = param.thisObject ?: return@runCatching
-                        val key = rememberPlayerController(controller, stateMethodNames)
+                        val key = rememberPlayerController(controller, controllerKind)
                         val state = param.result.asInt() ?: return@runCatching
                         if (state in 3..5 && duration <= 0) {
                             duration = resolveDuration(controller)
@@ -298,11 +337,11 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
             ?: -1L
     }
 
-    private fun rememberPlayerController(controller: Any, stateMethodNames: Set<String>): String {
-        if (controller.javaClass.name.contains("bilicardplayer") || stateMethodNames == CARD_STATE_METHOD_NAMES) {
-            cardPlayerContextRef = WeakReference(controller)
-        } else {
-            playerCoreServiceRef = WeakReference(controller)
+    private fun rememberPlayerController(controller: Any, controllerKind: ControllerKind): String {
+        when (controllerKind) {
+            ControllerKind.PLAYER_CORE -> playerCoreServiceRef = WeakReference(controller)
+            ControllerKind.CARD -> cardPlayerContextRef = WeakReference(controller)
+            ControllerKind.STORY -> storyPlayerRef = WeakReference(controller)
         }
         val key = SkipVideoAdState.keyForController(controller) ?: videoKey()
         updatePlaybackKey(key)
@@ -332,6 +371,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
         manualNotifiedSegments.clear()
         playerCoreServiceRef = null
         cardPlayerContextRef = null
+        storyPlayerRef = null
         if (fetchImmediately) {
             fetchSegmentsIfNeeded()
         }
@@ -424,6 +464,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
     ): Boolean {
         val controllers = buildList {
             preferredController?.let(::add)
+            storyPlayer?.let(::add)
             cardPlayerContext?.let(::add)
             playerCoreService?.let(::add)
         }.distinctBy { System.identityHashCode(it) }
@@ -736,6 +777,7 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
         private const val MANUAL_PROMPT_TAG = "bbzq_skip_video_ad_manual_prompt"
         private val STATE_METHOD_NAMES = setOf("getState")
         private val CARD_STATE_METHOD_NAMES = setOf("getPlayerState", "getState")
+        private val STORY_STATE_METHOD_NAMES = setOf("getState")
         private val RESET_PLAYER_STATES = setOf(2)
         private val MANUAL_PROMPT_BACKGROUND = Color.argb(230, 18, 18, 18)
         private val MANUAL_PROMPT_ACTION_BACKGROUND = Color.rgb(251, 114, 153)
@@ -745,5 +787,11 @@ class SkipVideoAdHook(env: RoamingEnv) : BaseRoamingHook(env) {
 
         @Volatile
         private var topActivity: WeakReference<Activity>? = null
+    }
+
+    private enum class ControllerKind {
+        PLAYER_CORE,
+        CARD,
+        STORY,
     }
 }

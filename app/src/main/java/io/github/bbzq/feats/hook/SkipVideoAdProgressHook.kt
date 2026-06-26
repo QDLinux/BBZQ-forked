@@ -1,6 +1,8 @@
 package io.github.bbzq.feats.hook
 
 import android.graphics.Canvas
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.ProgressBar
 import io.github.bbzq.ModuleSettings
@@ -24,11 +26,13 @@ class SkipVideoAdProgressHook(env: RoamingEnv) : BaseRoamingHook(env) {
     private val playerContainerFields = ConcurrentHashMap<Class<*>, Field>()
     private val missingPlayerContainerFields = ConcurrentHashMap.newKeySet<Class<*>>()
     private val hookedProgressDrawMethods = ConcurrentHashMap.newKeySet<String>()
+    private val pendingStorySegmentRequests = ConcurrentHashMap.newKeySet<String>()
     private val reflectionFailureLogs = ConcurrentHashMap.newKeySet<String>()
 
     private var restoredSymbols: RestoredSkipVideoAdProgressSymbols? = null
     private val panelWidgetKtClass: Class<*>?
         get() = restoredSymbols?.panelWidgetKtClass
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
     override fun startHook() {
         if (env.processName != env.packageName) return
@@ -209,7 +213,7 @@ class SkipVideoAdProgressHook(env: RoamingEnv) : BaseRoamingHook(env) {
         val durationMs = resolveStoryDurationMs(player, progressBar, detail, key)
         SkipVideoAdState.updateDuration(key, durationMs)
         if (requestSegments) {
-            requestSegmentsIfMissing(identity)
+            requestStorySegmentsIfMissing(identity)
         }
         return stateForViewOrActive(progressBar)
     }
@@ -228,6 +232,21 @@ class SkipVideoAdProgressHook(env: RoamingEnv) : BaseRoamingHook(env) {
         SkipVideoAdState.requestSegmentsIfMissing(identity, config.enabledCategories) { message, throwable ->
             log(message, throwable)
         }
+    }
+
+    private fun requestStorySegmentsIfMissing(identity: SkipVideoAdState.VideoIdentity) {
+        val config = ModuleSettings.getSkipVideoAdCache(prefs)
+        if (!config.enabled) return
+        if (!SkipVideoAdState.shouldRequestSegments(identity, config.enabledCategories)) return
+        if (!pendingStorySegmentRequests.add(identity.key)) return
+
+        mainHandler.postDelayed(
+            {
+                pendingStorySegmentRequests.remove(identity.key)
+                requestSegmentsIfMissing(identity)
+            },
+            STORY_SEGMENT_REQUEST_DELAY_MS,
+        )
     }
 
     private fun updateDurationFromController(key: String, controller: Any) {
@@ -471,6 +490,7 @@ class SkipVideoAdProgressHook(env: RoamingEnv) : BaseRoamingHook(env) {
         private const val PLAYER_SEEK_WIDGET_CLASS = "com.bilibili.playerbizcommonv2.widget.seek.v3.PlayerSeekWidget3"
         private const val STORY_SEEK_BAR_CLASS = "com.bilibili.video.story.view.StorySeekBar"
         private const val STORY_DETAIL_DURATION_SCALE = 1000L
+        private const val STORY_SEGMENT_REQUEST_DELAY_MS = 3000L
 
         private val INLINE_PROGRESS_CLASSES = setOf(
             "com.bilibili.app.comm.list.common.inline.widgetV3.InlineProgressWidgetV3",

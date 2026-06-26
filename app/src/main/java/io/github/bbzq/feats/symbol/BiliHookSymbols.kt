@@ -85,7 +85,7 @@ data class BiliHookSymbols(
         .putOpt("fullNumberFormat", fullNumberFormat?.toJson())
 
     companion object {
-        const val CACHE_SCHEMA_VERSION = 15
+        const val CACHE_SCHEMA_VERSION = 16
 
         fun fromJson(raw: String?): BiliHookSymbols? {
             if (raw.isNullOrBlank()) return null
@@ -137,7 +137,7 @@ data class BiliHookSymbols(
 }
 
 object DexKitRuleVersions {
-    const val CURRENT = 31
+    const val CURRENT = 32
 }
 
 data class HookPointStatus(
@@ -1519,6 +1519,9 @@ data class SkipVideoAdSymbols(
     val cardCurrentPositionMethods: List<MethodDescriptor>,
     val cardStateMethods: List<MethodDescriptor>,
     val cardSeekMethods: List<MethodDescriptor>,
+    val storyCurrentPositionMethods: List<MethodDescriptor>,
+    val storyStateMethods: List<MethodDescriptor>,
+    val storySeekMethods: List<MethodDescriptor>,
     val evidence: String,
 ) {
     fun toJson(): JSONObject = JSONObject()
@@ -1529,6 +1532,9 @@ data class SkipVideoAdSymbols(
         .put("cardCurrentPositionMethods", cardCurrentPositionMethods.toJsonArray { it.toJson() })
         .put("cardStateMethods", cardStateMethods.toJsonArray { it.toJson() })
         .put("cardSeekMethods", cardSeekMethods.toJsonArray { it.toJson() })
+        .put("storyCurrentPositionMethods", storyCurrentPositionMethods.toJsonArray { it.toJson() })
+        .put("storyStateMethods", storyStateMethods.toJsonArray { it.toJson() })
+        .put("storySeekMethods", storySeekMethods.toJsonArray { it.toJson() })
         .put("evidence", evidence)
 
     fun restore(classLoader: ClassLoader): RestoredSkipVideoAdSymbols? {
@@ -1540,6 +1546,9 @@ data class SkipVideoAdSymbols(
             cardCurrentPositionMethods = cardCurrentPositionMethods.restoreAll(classLoader) ?: return null,
             cardStateMethods = cardStateMethods.restoreAll(classLoader) ?: return null,
             cardSeekMethods = cardSeekMethods.restoreAll(classLoader) ?: return null,
+            storyCurrentPositionMethods = storyCurrentPositionMethods.restoreAll(classLoader) ?: return null,
+            storyStateMethods = storyStateMethods.restoreAll(classLoader) ?: return null,
+            storySeekMethods = storySeekMethods.restoreAll(classLoader) ?: return null,
         )
     }
 
@@ -1560,6 +1569,11 @@ data class SkipVideoAdSymbols(
             },
             cardStateMethods = obj.optJSONArray("cardStateMethods").toList { MethodDescriptor.fromJson(it) },
             cardSeekMethods = obj.optJSONArray("cardSeekMethods").toList { MethodDescriptor.fromJson(it) },
+            storyCurrentPositionMethods = obj.optJSONArray("storyCurrentPositionMethods").toList {
+                MethodDescriptor.fromJson(it)
+            },
+            storyStateMethods = obj.optJSONArray("storyStateMethods").toList { MethodDescriptor.fromJson(it) },
+            storySeekMethods = obj.optJSONArray("storySeekMethods").toList { MethodDescriptor.fromJson(it) },
             evidence = obj.optString("evidence", "-"),
         )
     }
@@ -1573,6 +1587,9 @@ data class RestoredSkipVideoAdSymbols(
     val cardCurrentPositionMethods: List<Method>,
     val cardStateMethods: List<Method>,
     val cardSeekMethods: List<Method>,
+    val storyCurrentPositionMethods: List<Method>,
+    val storyStateMethods: List<Method>,
+    val storySeekMethods: List<Method>,
 )
 
 data class SkipVideoAdProgressSymbols(

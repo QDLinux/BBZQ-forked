@@ -115,10 +115,7 @@ object SkipVideoAdState {
         if (enabledCategories.isEmpty()) return
 
         val requestKey = buildRequestKey(identity, enabledCategories)
-        if (requestKey in loadedSegmentRequests) return
-
-        val failedAt = failedSegmentRequests[requestKey]
-        if (failedAt != null && System.currentTimeMillis() - failedAt < FAILED_RETRY_DELAY_MS) return
+        if (!shouldRequestSegments(requestKey)) return
         if (!loadingSegmentRequests.add(requestKey)) return
 
         Thread {
@@ -157,6 +154,11 @@ object SkipVideoAdState {
         }
     }
 
+    fun shouldRequestSegments(identity: VideoIdentity, enabledCategories: Set<String>): Boolean {
+        if (enabledCategories.isEmpty()) return false
+        return shouldRequestSegments(buildRequestKey(identity, enabledCategories))
+    }
+
     private fun updateState(
         key: String,
         durationMs: Long?,
@@ -174,6 +176,14 @@ object SkipVideoAdState {
 
     private fun buildRequestKey(identity: VideoIdentity, enabledCategories: Set<String>): String =
         identity.key + "|" + enabledCategories.sorted().joinToString(",")
+
+    private fun shouldRequestSegments(requestKey: String): Boolean {
+        if (requestKey in loadedSegmentRequests) return false
+        if (requestKey in loadingSegmentRequests) return false
+
+        val failedAt = failedSegmentRequests[requestKey]
+        return failedAt == null || System.currentTimeMillis() - failedAt >= FAILED_RETRY_DELAY_MS
+    }
 
     private fun Any?.asLong(): Long? = when (this) {
         is Number -> toLong()
