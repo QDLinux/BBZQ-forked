@@ -31,6 +31,7 @@ class StoryComponentAlphaHook(env: RoamingEnv) : BaseRoamingHook(env) {
         var hookCount = 0
         hookCount += installModuleConstructorHooks(symbols.infoConstructors, alpha, "StoryInfoModule")
         hookCount += installModuleConstructorHooks(symbols.rightConstructors, alpha, "StoryRightModule")
+        hookCount += installModuleConstructorHooks(symbols.bottomConstructors, alpha, "StoryBottomModule")
         hookCount += installTopControlsHook(symbols.fragmentOnCreateView, alpha)
         hookCount += installTopControlsAlphaWatcher(alpha)
         log("startHook: StoryComponentAlpha methods=$hookCount alpha=$alpha")

@@ -85,7 +85,7 @@ data class BiliHookSymbols(
         .putOpt("fullNumberFormat", fullNumberFormat?.toJson())
 
     companion object {
-        const val CACHE_SCHEMA_VERSION = 14
+        const val CACHE_SCHEMA_VERSION = 15
 
         fun fromJson(raw: String?): BiliHookSymbols? {
             if (raw.isNullOrBlank()) return null
@@ -137,7 +137,7 @@ data class BiliHookSymbols(
 }
 
 object DexKitRuleVersions {
-    const val CURRENT = 30
+    const val CURRENT = 31
 }
 
 data class HookPointStatus(
@@ -906,23 +906,28 @@ data class RestoredStoryDanmakuSymbols(
 data class StoryComponentAlphaSymbols(
     val infoConstructors: List<ConstructorDescriptor>,
     val rightConstructors: List<ConstructorDescriptor>,
+    val bottomConstructors: List<ConstructorDescriptor>,
     val fragmentOnCreateView: MethodDescriptor,
     val evidence: String,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("infoConstructors", infoConstructors.toJsonArray { it.toJson() })
         .put("rightConstructors", rightConstructors.toJsonArray { it.toJson() })
+        .put("bottomConstructors", bottomConstructors.toJsonArray { it.toJson() })
         .put("fragmentOnCreateView", fragmentOnCreateView.toJson())
         .put("evidence", evidence)
 
     fun restore(classLoader: ClassLoader): RestoredStoryComponentAlphaSymbols? {
         val infoType = classLoader.loadClassOrNull(STORY_INFO_MODULE) ?: return null
         val rightType = classLoader.loadClassOrNull(STORY_RIGHT_MODULE) ?: return null
+        val bottomType = classLoader.loadClassOrNull(STORY_BOTTOM_MODULE) ?: return null
         return RestoredStoryComponentAlphaSymbols(
             infoConstructors = infoConstructors.mapNotNull { it.restore(infoType) }
                 .takeIf { it.size == infoConstructors.size } ?: return null,
             rightConstructors = rightConstructors.mapNotNull { it.restore(rightType) }
                 .takeIf { it.size == rightConstructors.size } ?: return null,
+            bottomConstructors = bottomConstructors.mapNotNull { it.restore(bottomType) }
+                .takeIf { it.size == bottomConstructors.size } ?: return null,
             fragmentOnCreateView = fragmentOnCreateView.restoreOptional(classLoader) ?: return null,
         )
     }
@@ -931,18 +936,21 @@ data class StoryComponentAlphaSymbols(
         fun fromJson(obj: JSONObject): StoryComponentAlphaSymbols = StoryComponentAlphaSymbols(
             infoConstructors = obj.optJSONArray("infoConstructors").toList { ConstructorDescriptor.fromJson(it) },
             rightConstructors = obj.optJSONArray("rightConstructors").toList { ConstructorDescriptor.fromJson(it) },
+            bottomConstructors = obj.optJSONArray("bottomConstructors").toList { ConstructorDescriptor.fromJson(it) },
             fragmentOnCreateView = MethodDescriptor.fromJson(obj.getJSONObject("fragmentOnCreateView")),
             evidence = obj.optString("evidence", "-"),
         )
 
         private const val STORY_INFO_MODULE = "com.bilibili.video.story.module.StoryInfoModule"
         private const val STORY_RIGHT_MODULE = "com.bilibili.video.story.module.StoryRightModule"
+        private const val STORY_BOTTOM_MODULE = "com.bilibili.video.story.module.StoryBottomModule"
     }
 }
 
 data class RestoredStoryComponentAlphaSymbols(
     val infoConstructors: List<Constructor<*>>,
     val rightConstructors: List<Constructor<*>>,
+    val bottomConstructors: List<Constructor<*>>,
     val fragmentOnCreateView: Method,
 )
 
