@@ -60,6 +60,8 @@ object MarkdownFormatter {
      * 这样可避免链接 URL 被二次转义（如 query string 中的 & 变成 &amp;amp;）。
      */
     private fun inline(text: String): String {
+        // 先剥离正文里可能存在的占位符标记，防止被伪造（含字面 U+0001 的内容否则会被当作占位符匹配并注入）。
+        val sanitized = text.replace(PLACEHOLDER_MARK, "")
         val tokens = ArrayList<String>()
         fun stash(html: String): String {
             val placeholder = "$PLACEHOLDER_MARK${tokens.size}$PLACEHOLDER_MARK"
@@ -68,27 +70,34 @@ object MarkdownFormatter {
         }
 
         // 1. 行内代码：内容原样转义，不再参与链接/加粗解析。
-        var s = CODE_REGEX.replace(text) { m -> stash("<tt>${escapeHtml(m.groupValues[1])}</tt>") }
-        // 2. 链接：在整体转义前抽取，label 与 URL 各只转义一次；非 http(s) 链接降级为纯文本。
+        var s = CODE_REGEX.replace(sanitized) { m -> stash("<tt>${escapeHtml(m.groupValues[1])}</tt>") }
+        // 2. 链接：在整体转义前抽取，label 继续解析加粗、URL 与 label 各只转义一次；非 http(s) 链接降级为纯文本。
         s = LINK_REGEX.replace(s) { m ->
             val label = m.groupValues[1]
             val url = m.groupValues[2]
             if (isSafeUrl(url)) {
-                stash("<a href=\"${escapeHtml(url)}\">${escapeHtml(label)}</a>")
+                stash("<a href=\"${escapeHtml(url)}\">${formatLabel(label)}</a>")
             } else {
-                escapeHtml(label)
+                formatLabel(label)
             }
         }
         // 3. 其余文本统一转义。
         s = escapeHtml(s)
         // 4. **粗体**
-        s = BOLD_REGEX.replace(s) { m -> "<b>${m.groupValues[1]}</b>" }
-        // 5. 回填占位符。
-        tokens.forEachIndexed { index, html ->
-            s = s.replace("$PLACEHOLDER_MARK$index$PLACEHOLDER_MARK", html)
+        s = applyBold(s)
+        // 5. 倒序回填：外层 token（如链接）的 html 可能内嵌更早抽取的占位符（如 label 里的行内代码），
+        //    倒序保证外层先回填、把内嵌占位符暴露出来后再被替换，避免遗留无法回填的占位符。
+        for (index in tokens.indices.reversed()) {
+            s = s.replace("$PLACEHOLDER_MARK$index$PLACEHOLDER_MARK", tokens[index])
         }
         return s
     }
+
+    /** 处理链接 label：整体转义后再解析其中的 **加粗**，使 label 内的加粗也能渲染。 */
+    private fun formatLabel(label: String): String = applyBold(escapeHtml(label))
+
+    private fun applyBold(text: String): String =
+        BOLD_REGEX.replace(text) { m -> "<b>${m.groupValues[1]}</b>" }
 
     /** 仅允许 http/https 链接，其余（javascript:、data: 等）一律视为不安全。 */
     private fun isSafeUrl(url: String): Boolean {

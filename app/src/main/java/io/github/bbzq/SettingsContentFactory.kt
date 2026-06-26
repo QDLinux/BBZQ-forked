@@ -66,6 +66,7 @@ class SettingsContentFactory(
     private lateinit var symbolScanStatusSummary: TextView
     private var updateCheckSummaryView: TextView? = null
     private var updateChecking = false
+    private var updateCheckCall: okhttp3.Call? = null
     private var versionTapCount = 0
     private var firstVersionTapAt = 0L
     private var refreshing = false
@@ -735,15 +736,23 @@ class SettingsContentFactory(
         if (updateChecking) return
         updateChecking = true
         updateCheckSummaryView?.text = context.getString(R.string.check_update_checking_summary)
-        UpdateChecker.check(
+        updateCheckCall = UpdateChecker.check(
             BuildConfig.RELEASE_NAME,
             BuildConfig.VERSION_CODE,
             ModuleSettings.isAcceptPrereleaseUpdateEnabled(prefs),
         ) { result ->
+            updateCheckCall = null
             updateChecking = false
             if (isActivityFinishing()) return@check
             onUpdateCheckResult(result)
         }
+    }
+
+    /** 界面销毁时调用：取消在途请求并断开视图引用，避免回调持有已销毁的 Activity。 */
+    fun destroy() {
+        updateCheckCall?.cancel()
+        updateCheckCall = null
+        updateCheckSummaryView = null
     }
 
     private fun onUpdateCheckResult(result: UpdateChecker.Result) {

@@ -77,23 +77,25 @@ object UpdateChecker {
      * @param currentVersion 本地版本号（BuildConfig.RELEASE_NAME）
      * @param currentVersionCode 本地 versionCode（BuildConfig.VERSION_CODE），0 或负值表示不参与比较
      * @param acceptPrerelease 是否接收预发布（测试）版本更新
+     * @return 本次请求的 [Call]，调用方可在界面销毁时 cancel 以释放回调、避免泄漏；构造失败时为 null
      */
     fun check(
         currentVersion: String,
         currentVersionCode: Int,
         acceptPrerelease: Boolean,
         onResult: (Result) -> Unit,
-    ) {
+    ): Call? {
         // 同步兜底：构造请求或入队若抛出异常（如客户端初始化失败、调度器拒绝），
         // 也要回调一次失败，避免调用方状态永久卡住。
-        try {
+        return try {
             val request = Request.Builder()
                 .url(RELEASE_API_URL)
                 .header("accept", "application/vnd.github+json")
                 .header("user-agent", USER_AGENT)
                 .build()
 
-            httpClient.newCall(request).enqueue(object : Callback {
+            val call = httpClient.newCall(request)
+            call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
                     postResult(onResult, Result(Status.FAILED, currentVersion = currentVersion))
                 }
@@ -109,8 +111,10 @@ object UpdateChecker {
                     postResult(onResult, result)
                 }
             })
+            call
         } catch (_: Throwable) {
             postResult(onResult, Result(Status.FAILED, currentVersion = currentVersion))
+            null
         }
     }
 
@@ -187,15 +191,18 @@ object UpdateChecker {
         for (index in 0 until array.length()) {
             val obj = array.optJSONObject(index) ?: continue
             if (obj.optBoolean("draft", false)) continue
-            // 版本名优先取 name，缺失时退回 tag_name。
-            val versionName = obj.optString("name").ifBlank { obj.optString("tag_name") }
+            val tagName = jsonString(obj, "tag_name")
+            val versionCode = parseVersionCode(tagName)
+            // 版本名优先取 name，缺失时退回 tag_name 并剥离首尾 versionCode 前后缀，
+            // 避免 `133-v1.0.3-133` 的数字前缀被当成主版本号。
+            val versionName = jsonString(obj, "name").ifBlank { versionNameFromTag(tagName, versionCode) }
             if (versionName.isBlank()) continue
-            val htmlUrl = obj.optString("html_url").takeIf { it.isNotBlank() } ?: RELEASE_PAGE_URL
+            val htmlUrl = jsonString(obj, "html_url").takeIf { it.isNotBlank() } ?: RELEASE_PAGE_URL
             releases += ReleaseInfo(
                 versionName = versionName,
                 htmlUrl = htmlUrl,
-                body = obj.optString("body"),
-                versionCode = parseVersionCode(obj.optString("tag_name")),
+                body = jsonString(obj, "body"),
+                versionCode = versionCode,
                 apkSizeBytes = parseApkSize(obj),
                 prerelease = obj.optBoolean("prerelease", false),
             )
@@ -210,6 +217,26 @@ object UpdateChecker {
      */
     private fun parseVersionCode(tagName: String): Int =
         tagName.substringBefore('-', "").toIntOrNull() ?: 0
+
+    /**
+     * 由 tag_name 推导可读版本名（仅在 name 字段缺失时使用）。
+     *
+     * LSPosed tag 形如 `133-v1.0.3-133`：先剥离开头的 versionCode 前缀，再剥离结尾的 `-133` 后缀，
+     * 得到 `v1.0.3`，避免数字前缀被 compareVersion 误当成主版本号。无法识别时退回原 tag。
+     */
+    private fun versionNameFromTag(tagName: String, versionCode: Int): String {
+        if (tagName.isBlank()) return ""
+        if (versionCode <= 0) return tagName
+        val codeText = versionCode.toString()
+        return tagName
+            .removePrefix("$codeText-")
+            .removeSuffix("-$codeText")
+            .ifBlank { tagName }
+    }
+
+    /** 读取字符串字段，JSON null 视为空串（org.json 的 optString 对 null 会返回字面 "null"）。 */
+    private fun jsonString(obj: JSONObject, key: String): String =
+        if (obj.isNull(key)) "" else obj.optString(key)
 
     /** 取 Release 中 APK 资产的大小（字节），多个时取最大值，无则返回 0。 */
     private fun parseApkSize(release: JSONObject): Long {
