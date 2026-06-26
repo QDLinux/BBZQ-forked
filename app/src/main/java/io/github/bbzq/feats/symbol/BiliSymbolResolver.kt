@@ -58,6 +58,7 @@ object BiliSymbolResolver {
     private const val HP_DOWNLOAD_THREAD_LISTENER = "DownloadThreadHook.Listener"
     private const val HP_DOWNLOAD_THREAD_REPORT = "DownloadThreadHook.ReportMethod"
     private const val HP_HOME_RECOMMEND_AUTO_REFRESH = "HomeRecommendAutoRefreshHook.AutoRefresh"
+    private const val HP_HOME_RECOMMEND_PRELOAD = "HomeRecommendPreloadHook.LoadMore"
     private const val HP_STORY_PLAYER_AD = "StoryPlayerAdHook.InstallPoints"
     private const val HP_STORY_FULLSCREEN = "StoryFullscreenHook.StoryVideoActivity"
     private const val HP_STORY_FULLSCREEN_ON_CREATE = "StoryFullscreenHook.OnCreate"
@@ -278,6 +279,9 @@ object BiliSymbolResolver {
         val homeRecommendAutoRefresh = scanHookPoint(HP_HOME_RECOMMEND_AUTO_REFRESH, hookPoints, scanErrors, log) {
             scanHomeRecommendAutoRefresh(classLoader)
         }
+        val homeRecommendPreload = scanHookPoint(HP_HOME_RECOMMEND_PRELOAD, hookPoints, scanErrors, log) {
+            scanHomeRecommendPreload(classLoader, ::bridge)
+        }
         val storyPlayerAd = scanHookPoint(HP_STORY_PLAYER_AD, hookPoints, scanErrors, log) {
             scanStoryPlayerAd(classLoader)
         }
@@ -348,6 +352,7 @@ object BiliSymbolResolver {
             mineProfile = mineProfile,
             downloadThread = downloadThread,
             homeRecommendAutoRefresh = homeRecommendAutoRefresh,
+            homeRecommendPreload = homeRecommendPreload,
             storyPlayerAd = storyPlayerAd,
             storyFullscreen = storyFullscreen,
             storyDanmaku = storyDanmaku,
@@ -996,6 +1001,9 @@ object BiliSymbolResolver {
     private fun Field.isLongField(): Boolean =
         type == Long::class.javaPrimitiveType || type == Long::class.javaObjectType
 
+    private fun Field.isIntField(): Boolean =
+        type == Int::class.javaPrimitiveType || type == Int::class.javaObjectType
+
     private fun Field.isBooleanField(): Boolean =
         type == Boolean::class.javaPrimitiveType || type == Boolean::class.javaObjectType
 
@@ -1009,6 +1017,110 @@ object BiliSymbolResolver {
         val flushCount = fields.count { it.type == flushClass }
         return "${requestParamClass.name}:long=$longCount,bool=$booleanCount,flush=$flushCount"
     }
+
+    private fun scanHomeRecommendPreload(
+        classLoader: ClassLoader,
+        bridge: () -> DexKitBridge?,
+    ): SymbolScanResult<HomeRecommendPreloadSymbols> {
+        val fragmentClasses = HOME_RECOMMEND_FRAGMENT_CLASSES
+            .asSequence()
+            .mapNotNull { classLoader.loadClassOrNull(it) }
+            .distinctBy { it.name }
+            .toList()
+        val fragmentClass = fragmentClasses.singleOrNull()
+            ?: return SymbolScanResult.Missing("PegasusFragment candidates=${fragmentClasses.size}")
+        val recyclerViewClass = HOME_RECOMMEND_RECYCLER_VIEW_CLASSES.firstNotNullOfOrNull {
+            classLoader.loadClassOrNull(it)
+        } ?: return SymbolScanResult.Missing("PegasusTintRecyclerView class not found")
+        val baseRecyclerViewClass = classLoader.loadClassOrNull(RECYCLER_VIEW_CLASS)
+            ?: return SymbolScanResult.Missing("RecyclerView class not found")
+        val scrollListenerClass = classLoader.loadClassOrNull(RECYCLER_VIEW_ON_SCROLL_LISTENER)
+            ?: return SymbolScanResult.Missing("RecyclerView.OnScrollListener class not found")
+        val childAttachListenerClass = classLoader.loadClassOrNull(RECYCLER_VIEW_ON_CHILD_ATTACH_STATE_CHANGE_LISTENER)
+            ?: return SymbolScanResult.Missing("RecyclerView.OnChildAttachStateChangeListener class not found")
+        if (!baseRecyclerViewClass.isAssignableFrom(recyclerViewClass)) {
+            return SymbolScanResult.Missing("PegasusTintRecyclerView is not RecyclerView")
+        }
+
+        val onViewCreated = fragmentClass.findMethod("onViewCreated", Void.TYPE, View::class.java, Bundle::class.java)
+            ?.apply { isAccessible = true }
+            ?: return SymbolScanResult.Missing("PegasusFragment.onViewCreated not found")
+        val loadMoreScan = findConcreteImplementors(
+            classLoader = classLoader,
+            bridge = bridge,
+            interfaceName = RECYCLER_VIEW_ON_CHILD_ATTACH_STATE_CHANGE_LISTENER,
+        )
+        val loadMoreClasses = loadMoreScan.classes
+            .asSequence()
+            .filter {
+                it.isHomeRecommendLoadMoreListenerCandidate(
+                    scrollListenerClass = scrollListenerClass,
+                    childAttachListenerClass = childAttachListenerClass,
+                    recyclerViewClass = baseRecyclerViewClass,
+                )
+            }
+            .distinctBy { it.name }
+            .toList()
+        val loadMoreClass = loadMoreClasses.singleOrNull()
+            ?: return SymbolScanResult.Missing(
+                "load more listener candidates=${loadMoreClasses.size}" +
+                    loadMoreScan.error.orEmpty().takeIf { it.isNotBlank() }?.let { ", scanError=$it" }.orEmpty(),
+            )
+        val loadMoreMethods = loadMoreClass.declaredMethods
+            .filter { it.isHomeRecommendLoadMoreCheckMethod(baseRecyclerViewClass) }
+            .onEach { it.isAccessible = true }
+            .distinctBy(Method::toGenericString)
+        val loadMoreMethod = loadMoreMethods.singleOrNull()
+            ?: return SymbolScanResult.Missing("load more check method candidates=${loadMoreMethods.size}")
+
+        val instanceFields = loadMoreClass.declaredFields
+            .filter { !Modifier.isStatic(it.modifiers) }
+            .onEach { it.isAccessible = true }
+        val intFields = instanceFields.filter { it.isIntField() }
+        val prefetchField = intFields.singleOrNull()
+            ?: return SymbolScanResult.Missing("prefetch distance int fields=${intFields.size}")
+        val functionFieldCount = instanceFields.count { it.type.name == KOTLIN_FUNCTION0_CLASS }
+        val booleanFieldCount = instanceFields.count { it.isBooleanField() }
+        if (functionFieldCount != 1 || booleanFieldCount != 1) {
+            return SymbolScanResult.Missing(
+                "load more listener fields function0=$functionFieldCount boolean=$booleanFieldCount",
+            )
+        }
+
+        val symbols = HomeRecommendPreloadSymbols(
+            fragmentOnViewCreated = MethodDescriptor.of(onViewCreated),
+            loadMoreCheckMethod = MethodDescriptor.of(loadMoreMethod),
+            prefetchDistanceField = FieldDescriptor.of(prefetchField),
+            recyclerViewClassName = recyclerViewClass.name,
+            evidence = "fragment=${fragmentClass.name},listener=${loadMoreClass.name},rv=${recyclerViewClass.name},function0=$functionFieldCount,boolean=$booleanFieldCount",
+        )
+        return SymbolScanResult.Found(
+            symbols,
+            "${loadMoreMethod.declaringClass.name}.${loadMoreMethod.name}",
+            symbols.evidence,
+        )
+    }
+
+    private fun Class<*>.isHomeRecommendLoadMoreListenerCandidate(
+        scrollListenerClass: Class<*>,
+        childAttachListenerClass: Class<*>,
+        recyclerViewClass: Class<*>,
+    ): Boolean =
+        !isInterface &&
+            !Modifier.isAbstract(modifiers) &&
+            scrollListenerClass.isAssignableFrom(this) &&
+            childAttachListenerClass.isAssignableFrom(this) &&
+            declaredConstructors.any { ctor ->
+                ctor.parameterTypes.any { it.name == KOTLIN_FUNCTION0_CLASS }
+            } &&
+            declaredMethods.any { it.isHomeRecommendLoadMoreCheckMethod(recyclerViewClass) }
+
+    private fun Method.isHomeRecommendLoadMoreCheckMethod(recyclerViewClass: Class<*>): Boolean =
+        parameterCount == 1 &&
+            parameterTypes[0] == recyclerViewClass &&
+            returnType == Void.TYPE &&
+            !Modifier.isStatic(modifiers) &&
+            !Modifier.isAbstract(modifiers)
 
     private fun childHookPoint(id: String, found: Boolean, missing: String, evidence: String = "-"): HookPointStatus =
         if (found) {
@@ -3073,6 +3185,18 @@ object BiliSymbolResolver {
     private const val HOME_AUTO_REFRESH_COMPONENT = "com.bilibili.pegasus.components.AutoRefreshComponent"
     private const val HOME_PEGASUS_REQUEST_MANAGER = "com.bilibili.pegasus.request.b"
     private const val HOME_PEGASUS_FLUSH = "com.bilibili.pegasus.data.request.PegasusFlush"
+    private val HOME_RECOMMEND_FRAGMENT_CLASSES = arrayOf(
+        "com.bilibili.pegasus.PegasusFragment",
+    )
+    private val HOME_RECOMMEND_RECYCLER_VIEW_CLASSES = arrayOf(
+        "com.bilibili.pegasus.widget.PegasusTintRecyclerView",
+    )
+    private const val RECYCLER_VIEW_CLASS = "androidx.recyclerview.widget.RecyclerView"
+    private const val RECYCLER_VIEW_ON_SCROLL_LISTENER =
+        "androidx.recyclerview.widget.RecyclerView\$OnScrollListener"
+    private const val RECYCLER_VIEW_ON_CHILD_ATTACH_STATE_CHANGE_LISTENER =
+        "androidx.recyclerview.widget.RecyclerView\$OnChildAttachStateChangeListener"
+    private const val KOTLIN_FUNCTION0_CLASS = "kotlin.jvm.functions.Function0"
     private const val HOME_RESOURCE = "com.bilibili.lib.arch.lifecycle.Resource"
     private const val STORY_VIDEO_ACTIVITY = "com.bilibili.video.story.StoryVideoActivity"
     private const val STORY_VIDEO_FRAGMENT = "com.bilibili.video.story.StoryVideoFragment"

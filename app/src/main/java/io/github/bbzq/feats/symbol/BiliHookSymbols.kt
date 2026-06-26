@@ -26,6 +26,7 @@ data class BiliHookSymbols(
     val mineProfile: MineProfileSymbols? = null,
     val downloadThread: DownloadThreadSymbols? = null,
     val homeRecommendAutoRefresh: HomeRecommendAutoRefreshSymbols? = null,
+    val homeRecommendPreload: HomeRecommendPreloadSymbols? = null,
     val storyPlayerAd: StoryPlayerAdSymbols? = null,
     val storyFullscreen: StoryFullscreenSymbols? = null,
     val storyDanmaku: StoryDanmakuSymbols? = null,
@@ -66,6 +67,7 @@ data class BiliHookSymbols(
         .putOpt("mineProfile", mineProfile?.toJson())
         .putOpt("downloadThread", downloadThread?.toJson())
         .putOpt("homeRecommendAutoRefresh", homeRecommendAutoRefresh?.toJson())
+        .putOpt("homeRecommendPreload", homeRecommendPreload?.toJson())
         .putOpt("storyPlayerAd", storyPlayerAd?.toJson())
         .putOpt("storyFullscreen", storyFullscreen?.toJson())
         .putOpt("storyDanmaku", storyDanmaku?.toJson())
@@ -85,7 +87,7 @@ data class BiliHookSymbols(
         .putOpt("fullNumberFormat", fullNumberFormat?.toJson())
 
     companion object {
-        const val CACHE_SCHEMA_VERSION = 16
+        const val CACHE_SCHEMA_VERSION = 17
 
         fun fromJson(raw: String?): BiliHookSymbols? {
             if (raw.isNullOrBlank()) return null
@@ -109,6 +111,8 @@ data class BiliHookSymbols(
                     downloadThread = obj.optJSONObject("downloadThread")?.let(DownloadThreadSymbols::fromJson),
                     homeRecommendAutoRefresh = obj.optJSONObject("homeRecommendAutoRefresh")
                         ?.let(HomeRecommendAutoRefreshSymbols::fromJson),
+                    homeRecommendPreload = obj.optJSONObject("homeRecommendPreload")
+                        ?.let(HomeRecommendPreloadSymbols::fromJson),
                     storyPlayerAd = obj.optJSONObject("storyPlayerAd")?.let(StoryPlayerAdSymbols::fromJson),
                     storyFullscreen = obj.optJSONObject("storyFullscreen")?.let(StoryFullscreenSymbols::fromJson),
                     storyDanmaku = obj.optJSONObject("storyDanmaku")?.let(StoryDanmakuSymbols::fromJson),
@@ -137,7 +141,7 @@ data class BiliHookSymbols(
 }
 
 object DexKitRuleVersions {
-    const val CURRENT = 32
+    const val CURRENT = 33
 }
 
 data class HookPointStatus(
@@ -745,6 +749,51 @@ data class RestoredHomeRecommendAutoRefreshSymbols(
         return idx == 0L && refresh && flushName == normalFlushName
     }
 }
+
+data class HomeRecommendPreloadSymbols(
+    val fragmentOnViewCreated: MethodDescriptor,
+    val loadMoreCheckMethod: MethodDescriptor,
+    val prefetchDistanceField: FieldDescriptor,
+    val recyclerViewClassName: String,
+    val evidence: String,
+) {
+    fun toJson(): JSONObject = JSONObject()
+        .put("fragmentOnViewCreated", fragmentOnViewCreated.toJson())
+        .put("loadMoreCheckMethod", loadMoreCheckMethod.toJson())
+        .put("prefetchDistanceField", prefetchDistanceField.toJson())
+        .put("recyclerViewClassName", recyclerViewClassName)
+        .put("evidence", evidence)
+
+    fun restore(classLoader: ClassLoader): RestoredHomeRecommendPreloadSymbols? {
+        val fragmentOwner = classLoader.loadClassOrNull(fragmentOnViewCreated.declaringClassName) ?: return null
+        val checkOwner = classLoader.loadClassOrNull(loadMoreCheckMethod.declaringClassName) ?: return null
+        val fieldOwner = classLoader.loadClassOrNull(prefetchDistanceField.declaringClassName) ?: return null
+        val recyclerViewClass = classLoader.loadClassOrNull(recyclerViewClassName) ?: return null
+        return RestoredHomeRecommendPreloadSymbols(
+            fragmentOnViewCreated = fragmentOnViewCreated.restore(fragmentOwner) ?: return null,
+            loadMoreCheckMethod = loadMoreCheckMethod.restore(checkOwner) ?: return null,
+            prefetchDistanceField = prefetchDistanceField.restore(fieldOwner) ?: return null,
+            recyclerViewClass = recyclerViewClass,
+        )
+    }
+
+    companion object {
+        fun fromJson(obj: JSONObject): HomeRecommendPreloadSymbols = HomeRecommendPreloadSymbols(
+            fragmentOnViewCreated = MethodDescriptor.fromJson(obj.getJSONObject("fragmentOnViewCreated")),
+            loadMoreCheckMethod = MethodDescriptor.fromJson(obj.getJSONObject("loadMoreCheckMethod")),
+            prefetchDistanceField = FieldDescriptor.fromJson(obj.getJSONObject("prefetchDistanceField")),
+            recyclerViewClassName = obj.optString("recyclerViewClassName"),
+            evidence = obj.optString("evidence", "-"),
+        )
+    }
+}
+
+data class RestoredHomeRecommendPreloadSymbols(
+    val fragmentOnViewCreated: Method,
+    val loadMoreCheckMethod: Method,
+    val prefetchDistanceField: Field,
+    val recyclerViewClass: Class<*>,
+)
 
 data class StoryPlayerAdSymbols(
     val feedGetItems: MethodDescriptor?,
