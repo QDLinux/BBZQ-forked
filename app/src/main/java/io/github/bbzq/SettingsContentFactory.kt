@@ -64,6 +64,8 @@ class SettingsContentFactory(
     private lateinit var skipVideoAdAutoLikeSwitch: Switch
     private lateinit var blockedCountView: TextView
     private lateinit var symbolScanStatusSummary: TextView
+    private var updateCheckSummaryView: TextView? = null
+    private var updateChecking = false
     private var versionTapCount = 0
     private var firstVersionTapAt = 0L
     private var refreshing = false
@@ -581,6 +583,13 @@ class SettingsContentFactory(
         ) {
             handleVersionRowClick()
         }
+        rows += createUpdateCheckRow()
+        rows += createSwitchRow(
+            context.getString(R.string.about_accept_prerelease_title),
+            context.getString(R.string.about_accept_prerelease_summary),
+            ModuleSettings.KEY_ACCEPT_PRERELEASE_UPDATE,
+            false,
+        )
         rows += createClickableInfoRow(
             context.getString(R.string.about_export_config_title),
             context.getString(R.string.about_export_config_summary),
@@ -698,6 +707,124 @@ class SettingsContentFactory(
         ModuleSettings.isSkipVideoAdSettingsVisible(prefs) ||
             ModuleSettings.isAccessKeySettingsVisible(prefs) ||
             ModuleSettings.isTryFreeQualitySettingsVisible(prefs)
+
+    private fun createUpdateCheckRow(): View {
+        val summaryView = TextView(context).apply {
+            text = context.getString(R.string.about_check_update_summary)
+            textSize = 12f
+            setTextColor(SUMMARY_COLOR)
+            setPadding(0, dp(4), 0, 0)
+        }
+        updateCheckSummaryView = summaryView
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { handleUpdateCheckClick() }
+            addView(TextView(context).apply {
+                text = context.getString(R.string.about_check_update_title)
+                textSize = 15f
+                setTextColor(TITLE_COLOR)
+            })
+            addView(summaryView)
+        }
+    }
+
+    private fun handleUpdateCheckClick() {
+        if (updateChecking) return
+        updateChecking = true
+        updateCheckSummaryView?.text = context.getString(R.string.check_update_checking_summary)
+        UpdateChecker.check(
+            BuildConfig.RELEASE_NAME,
+            BuildConfig.VERSION_CODE,
+            ModuleSettings.isAcceptPrereleaseUpdateEnabled(prefs),
+        ) { result ->
+            updateChecking = false
+            if (isActivityFinishing()) return@check
+            onUpdateCheckResult(result)
+        }
+    }
+
+    private fun onUpdateCheckResult(result: UpdateChecker.Result) {
+        when (result.status) {
+            UpdateChecker.Status.UP_TO_DATE -> {
+                updateCheckSummaryView?.text = context.getString(
+                    R.string.check_update_up_to_date_summary,
+                    result.latestVersion ?: BuildConfig.RELEASE_NAME,
+                )
+            }
+
+            UpdateChecker.Status.UPDATE_AVAILABLE -> {
+                val latest = result.latestVersion.orEmpty()
+                updateCheckSummaryView?.text = context.getString(
+                    R.string.check_update_available_summary,
+                    latest,
+                )
+                showUpdateAvailableDialog(result)
+            }
+
+            UpdateChecker.Status.FAILED -> {
+                updateCheckSummaryView?.text = context.getString(R.string.check_update_failed_summary)
+            }
+        }
+    }
+
+    private fun showUpdateAvailableDialog(result: UpdateChecker.Result) {
+        val latestVersionText = formatVersionWithCode(result.latestVersion.orEmpty(), result.latestVersionCode)
+        val currentVersionText = formatVersionWithCode(
+            result.currentVersion ?: BuildConfig.RELEASE_NAME,
+            BuildConfig.VERSION_CODE,
+        )
+        val header = context.getString(
+            R.string.check_update_dialog_message,
+            latestVersionText,
+            currentVersionText,
+        )
+        val notesRaw = result.releaseNotes?.takeIf { it.isNotBlank() }
+        val notesSpanned = notesRaw?.let { MarkdownFormatter.toSpanned(it) }
+            ?: android.text.SpannableString(context.getString(R.string.check_update_notes_empty))
+
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(12), dp(20), 0)
+            addView(TextView(context).apply {
+                text = header
+                textSize = 14f
+                setTextColor(TITLE_COLOR)
+            })
+            addView(TextView(context).apply {
+                text = context.getString(R.string.check_update_notes_label)
+                textSize = 12f
+                setTextColor(SUMMARY_COLOR)
+                setPadding(0, dp(12), 0, dp(4))
+            })
+            addView(TextView(context).apply {
+                text = notesSpanned
+                textSize = 13f
+                setTextColor(TITLE_COLOR)
+                movementMethod = android.text.method.LinkMovementMethod.getInstance()
+            })
+        }
+        val scroll = ScrollView(context).apply { addView(content) }
+
+        AlertDialog.Builder(context)
+            .setTitle(R.string.check_update_dialog_title)
+            .setView(scroll)
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .setPositiveButton(R.string.check_update_dialog_confirm) { _, _ ->
+                openUrl(result.releaseUrl ?: RELEASE_PAGE_URL)
+            }
+            .show()
+    }
+
+    /** 拼接「版本号（versionCode）」，code 无效时只显示版本号。 */
+    private fun formatVersionWithCode(version: String, code: Int): String =
+        if (code > 0) {
+            context.getString(R.string.check_update_version_with_code, version, code)
+        } else {
+            version
+        }
 
     private fun handleAccessKeyClick() {
         val key = AccessKeyRepository.read(prefs)
@@ -1674,5 +1801,7 @@ class SettingsContentFactory(
         private val CANCEL_ACTION_COLOR = Color.parseColor("#00A1D6")
         private const val VERSION_TAP_WINDOW_MS = 1500L
         private const val TITLE_KEYWORD_SUMMARY_MAX_ITEMS = 4
+        private const val RELEASE_PAGE_URL =
+            "https://github.com/HSSkyBoy/BBZQ/releases/latest"
     }
 }
