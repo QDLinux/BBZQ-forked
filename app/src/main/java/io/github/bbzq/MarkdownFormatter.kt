@@ -52,32 +52,36 @@ object MarkdownFormatter {
     }
 
     /**
-     * 处理行内语法。顺序：先抽出行内代码为占位符（其内容不再参与链接/加粗解析），
-     * 再依次处理链接、加粗，最后回填代码占位符，避免代码内的标记被二次渲染。
+     * 处理行内语法。先把行内代码、链接抽成占位符（其原始内容只在抽取时转义一次，
+     * 不再参与后续整体转义与加粗解析），再对剩余文本统一转义、处理加粗，最后回填占位符。
+     * 这样可避免链接 URL 被二次转义（如 query string 中的 & 变成 &amp;amp;）。
      */
     private fun inline(text: String): String {
-        val codeSpans = ArrayList<String>()
-        // 先抽取 `行内代码`，用控制字符包裹的占位符替换（正文不会出现该字符，也不被转义/正则触碰）。
-        var s = CODE_REGEX.replace(text) { m ->
-            val placeholder = "$PLACEHOLDER_MARK${codeSpans.size}$PLACEHOLDER_MARK"
-            codeSpans += "<tt>${escapeHtml(m.groupValues[1])}</tt>"
-            placeholder
+        val tokens = ArrayList<String>()
+        fun stash(html: String): String {
+            val placeholder = "$PLACEHOLDER_MARK${tokens.size}$PLACEHOLDER_MARK"
+            tokens += html
+            return placeholder
         }
-        s = escapeHtml(s)
-        // [文本](链接) → <a href>，过滤非 http(s) 链接，URL 一并转义。
+
+        // 1. 行内代码：内容原样转义，不再参与链接/加粗解析。
+        var s = CODE_REGEX.replace(text) { m -> stash("<tt>${escapeHtml(m.groupValues[1])}</tt>") }
+        // 2. 链接：在整体转义前抽取，label 与 URL 各只转义一次；非 http(s) 链接降级为纯文本。
         s = LINK_REGEX.replace(s) { m ->
             val label = m.groupValues[1]
             val url = m.groupValues[2]
             if (isSafeUrl(url)) {
-                "<a href=\"${escapeHtml(url)}\">$label</a>"
+                stash("<a href=\"${escapeHtml(url)}\">${escapeHtml(label)}</a>")
             } else {
-                label
+                escapeHtml(label)
             }
         }
-        // **粗体**
+        // 3. 其余文本统一转义。
+        s = escapeHtml(s)
+        // 4. **粗体**
         s = BOLD_REGEX.replace(s) { m -> "<b>${m.groupValues[1]}</b>" }
-        // 回填行内代码占位符。
-        codeSpans.forEachIndexed { index, html ->
+        // 5. 回填占位符。
+        tokens.forEachIndexed { index, html ->
             s = s.replace("$PLACEHOLDER_MARK$index$PLACEHOLDER_MARK", html)
         }
         return s
