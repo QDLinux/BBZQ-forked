@@ -11,6 +11,8 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.SystemClock
 import android.text.InputType
+import android.text.SpannableString
+import android.text.method.LinkMovementMethod
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -27,6 +29,7 @@ import android.widget.TextView
 import android.widget.Toast
 import io.github.bbzq.DesktopIconHelper
 import io.github.bbzq.R
+import okhttp3.Call
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -64,9 +67,14 @@ class SettingsContentFactory(
     private lateinit var skipVideoAdAutoLikeSwitch: Switch
     private lateinit var blockedCountView: TextView
     private lateinit var symbolScanStatusSummary: TextView
+    /** 「检查更新」行的摘要文本视图，用于回显检查状态；界面销毁时置空避免泄漏。 */
     private var updateCheckSummaryView: TextView? = null
+
+    /** 是否正在检查更新，用于去重并发点击。 */
     private var updateChecking = false
-    private var updateCheckCall: okhttp3.Call? = null
+
+    /** 当前在途的检查更新请求，界面销毁时取消。 */
+    private var updateCheckCall: Call? = null
     private var versionTapCount = 0
     private var firstVersionTapAt = 0L
     private var refreshing = false
@@ -800,7 +808,7 @@ class SettingsContentFactory(
         }
         val notesRaw = result.releaseNotes?.takeIf { it.isNotBlank() }
         val notesSpanned = notesRaw?.let { MarkdownFormatter.toSpanned(it) }
-            ?: android.text.SpannableString(context.getString(R.string.check_update_notes_empty))
+            ?: SpannableString(context.getString(R.string.check_update_notes_empty))
 
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -820,7 +828,7 @@ class SettingsContentFactory(
                 text = notesSpanned
                 textSize = 13f
                 setTextColor(TITLE_COLOR)
-                movementMethod = android.text.method.LinkMovementMethod.getInstance()
+                movementMethod = LinkMovementMethod.getInstance()
             })
         }
         val scroll = ScrollView(context).apply { addView(content) }
@@ -1828,6 +1836,7 @@ class SettingsContentFactory(
         private val CANCEL_ACTION_COLOR = Color.parseColor("#00A1D6")
         private const val VERSION_TAP_WINDOW_MS = 1500L
         private const val TITLE_KEYWORD_SUMMARY_MAX_ITEMS = 4
+        /** 检查更新弹窗「前往下载」的兜底地址，当 Release 未给出链接时使用。 */
         private const val RELEASE_PAGE_URL =
             "https://github.com/Xposed-Modules-Repo/io.github.bbzq/releases/latest"
     }

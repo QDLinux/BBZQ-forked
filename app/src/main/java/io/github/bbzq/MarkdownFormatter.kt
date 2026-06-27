@@ -22,36 +22,36 @@ object MarkdownFormatter {
     }
 
     private fun toHtml(markdown: String): String {
-        val builder = StringBuilder()
+        val htmlBuilder = StringBuilder()
         val lines = markdown.replace("\r\n", "\n").replace('\r', '\n').split('\n')
-        for (raw in lines) {
-            val line = raw.trim()
+        for (rawLine in lines) {
+            val line = rawLine.trim()
             when {
-                line.isEmpty() -> builder.append("<br>")
+                line.isEmpty() -> htmlBuilder.append("<br>")
 
                 // 标题用 h 标签获得字号层次（h2>h3>h4，自带加粗与段落间距），不再额外加 <br>。
                 line.startsWith("### ") ->
-                    builder.append("<h4>").append(inline(line.removePrefix("### "))).append("</h4>")
+                    htmlBuilder.append("<h4>").append(inline(line.removePrefix("### "))).append("</h4>")
 
                 line.startsWith("## ") ->
-                    builder.append("<h3>").append(inline(line.removePrefix("## "))).append("</h3>")
+                    htmlBuilder.append("<h3>").append(inline(line.removePrefix("## "))).append("</h3>")
 
                 line.startsWith("# ") ->
-                    builder.append("<h2>").append(inline(line.removePrefix("# "))).append("</h2>")
+                    htmlBuilder.append("<h2>").append(inline(line.removePrefix("# "))).append("</h2>")
 
                 line.startsWith("> ") ->
-                    builder.append("<i>").append(inline(line.removePrefix("> "))).append("</i><br>")
+                    htmlBuilder.append("<i>").append(inline(line.removePrefix("> "))).append("</i><br>")
 
                 line.startsWith("- ") || line.startsWith("* ") ->
-                    builder.append("&nbsp;&nbsp;•&nbsp;").append(inline(line.substring(2))).append("<br>")
+                    htmlBuilder.append("&nbsp;&nbsp;•&nbsp;").append(inline(line.substring(2))).append("<br>")
 
                 ORDERED_LIST_REGEX.containsMatchIn(line) ->
-                    builder.append("&nbsp;&nbsp;").append(inline(line)).append("<br>")
+                    htmlBuilder.append("&nbsp;&nbsp;").append(inline(line)).append("<br>")
 
-                else -> builder.append(inline(line)).append("<br>")
+                else -> htmlBuilder.append(inline(line)).append("<br>")
             }
         }
-        return builder.toString()
+        return htmlBuilder.toString()
     }
 
     /**
@@ -62,19 +62,20 @@ object MarkdownFormatter {
     private fun inline(text: String): String {
         // 先剥离正文里可能存在的占位符标记，防止被伪造（含字面 U+0001 的内容否则会被当作占位符匹配并注入）。
         val sanitized = text.replace(PLACEHOLDER_MARK, "")
-        val tokens = ArrayList<String>()
+        // 暂存被抽取的行内代码/链接 HTML，下标即占位符编号。
+        val stashedTokens = ArrayList<String>()
         fun stash(html: String): String {
-            val placeholder = "$PLACEHOLDER_MARK${tokens.size}$PLACEHOLDER_MARK"
-            tokens += html
+            val placeholder = "$PLACEHOLDER_MARK${stashedTokens.size}$PLACEHOLDER_MARK"
+            stashedTokens += html
             return placeholder
         }
 
         // 1. 行内代码：内容原样转义，不再参与链接/加粗解析。
-        var s = CODE_REGEX.replace(sanitized) { m -> stash("<tt>${escapeHtml(m.groupValues[1])}</tt>") }
+        var working = CODE_REGEX.replace(sanitized) { match -> stash("<tt>${escapeHtml(match.groupValues[1])}</tt>") }
         // 2. 链接：在整体转义前抽取，label 继续解析加粗、URL 与 label 各只转义一次；非 http(s) 链接降级为纯文本。
-        s = LINK_REGEX.replace(s) { m ->
-            val label = m.groupValues[1]
-            val url = m.groupValues[2]
+        working = LINK_REGEX.replace(working) { match ->
+            val label = match.groupValues[1]
+            val url = match.groupValues[2]
             if (isSafeUrl(url)) {
                 stash("<a href=\"${escapeHtml(url)}\">${formatLabel(label)}</a>")
             } else {
@@ -82,29 +83,30 @@ object MarkdownFormatter {
             }
         }
         // 3. 其余文本统一转义。
-        s = escapeHtml(s)
+        working = escapeHtml(working)
         // 4. **粗体**
-        s = applyBold(s)
+        working = applyBold(working)
         // 5. 倒序回填：外层 token（如链接）的 html 可能内嵌更早抽取的占位符（如 label 里的行内代码），
         //    倒序保证外层先回填、把内嵌占位符暴露出来后再被替换，避免遗留无法回填的占位符。
-        for (index in tokens.indices.reversed()) {
-            s = s.replace("$PLACEHOLDER_MARK$index$PLACEHOLDER_MARK", tokens[index])
+        for (index in stashedTokens.indices.reversed()) {
+            working = working.replace("$PLACEHOLDER_MARK$index$PLACEHOLDER_MARK", stashedTokens[index])
         }
-        return s
+        return working
     }
 
     /** 处理链接 label：整体转义后再解析其中的 **加粗**，使 label 内的加粗也能渲染。 */
     private fun formatLabel(label: String): String = applyBold(escapeHtml(label))
 
     private fun applyBold(text: String): String =
-        BOLD_REGEX.replace(text) { m -> "<b>${m.groupValues[1]}</b>" }
+        BOLD_REGEX.replace(text) { match -> "<b>${match.groupValues[1]}</b>" }
 
     /** 仅允许 http/https 链接，其余（javascript:、data: 等）一律视为不安全。 */
     private fun isSafeUrl(url: String): Boolean {
-        val lower = url.trim().lowercase()
-        return lower.startsWith("http://") || lower.startsWith("https://")
+        val normalizedUrl = url.trim().lowercase()
+        return normalizedUrl.startsWith("http://") || normalizedUrl.startsWith("https://")
     }
 
+    /** 转义 HTML 关键字符，避免正文破坏标签结构。 */
     private fun escapeHtml(text: String): String =
         text.replace("&", "&amp;")
             .replace("<", "&lt;")
@@ -114,9 +116,16 @@ object MarkdownFormatter {
     /** 行内代码占位符标记，使用控制字符，确保不与正文及 HTML 转义冲突。 */
     private const val PLACEHOLDER_MARK = "\u0001"
 
+    /** 链接语法 `[文本](URL)`。 */
     private val LINK_REGEX = Regex("""\[([^\]]+)]\(([^)]+)\)""")
+
+    /** 加粗语法 `**文本**`。 */
     private val BOLD_REGEX = Regex("""\*\*([^*]+)\*\*""")
+
+    /** 行内代码语法 `` `文本` ``。 */
     private val CODE_REGEX = Regex("""`([^`]+)`""")
+
+    /** 有序列表行首，如 `1. `。 */
     private val ORDERED_LIST_REGEX = Regex("""^\d+\.\s""")
 }
 
