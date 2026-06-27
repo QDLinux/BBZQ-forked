@@ -1,6 +1,5 @@
 package io.github.bbzq.feats.symbol.dexkit
 
-import android.content.Context
 import org.luckypray.dexkit.DexKitBridge
 import java.io.File
 
@@ -23,8 +22,6 @@ object DexKitBridgeProvider {
     private var nativeLibraryLoadError: String? = null
 
     fun openFirstAvailable(
-        hostContext: Context,
-        moduleContext: Context?,
         sourcePaths: List<String>,
         recordError: (String) -> Unit,
         log: (String) -> Unit,

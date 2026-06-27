@@ -1,7 +1,10 @@
 ﻿package io.github.bbzq.feats
 
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.SharedPreferences
+import android.content.res.AssetManager
+import android.content.res.Resources
 import io.github.bbzq.ModuleSettingsBridge
 import kotlin.LazyThreadSafetyMode
 import io.github.bbzq.feats.hook.BottomBarHook
@@ -74,7 +77,6 @@ object RoamingRuntime {
         val symbols = if (processScope != ProcessScope.UNSUPPORTED) {
             BiliSymbolResolver.resolve(
                 hostContext = env.hostContext,
-                moduleContext = env.moduleContext,
                 classLoader = classLoader,
                 log = log,
             )
@@ -82,6 +84,13 @@ object RoamingRuntime {
             null
         }
         env.symbols = symbols
+        if (processScope == ProcessScope.MAIN) {
+            SymbolScanRefreshRequestHandler.install(
+                env = env,
+                xposed = xposed,
+                classLoader = classLoader,
+            )
+        }
 
         val hooks = when (processScope) {
             ProcessScope.WEB -> listOf(
@@ -173,10 +182,17 @@ class RoamingEnv(
         runCatching {
             hostContext.createPackageContext(MODULE_PACKAGE, Context.CONTEXT_IGNORE_SECURITY)
         }
-            .onFailure { throwable ->
-                logger("Failed to create module context for $MODULE_PACKAGE", throwable)
+            .getOrElse { packageContextError ->
+                val resources = runCatching {
+                    hostContext.packageManager.getResourcesForApplication(xposed.moduleApplicationInfo)
+                }.onFailure { resourceError ->
+                    logger(
+                        "Failed to create module resource context for $MODULE_PACKAGE",
+                        resourceError.also { it.addSuppressed(packageContextError) },
+                    )
+                }.getOrNull() ?: return@lazy null
+                ModuleResourceContext(hostContext, resources)
             }
-            .getOrNull()
     }
 
     fun log(message: String, throwable: Throwable? = null) {
@@ -187,6 +203,17 @@ class RoamingEnv(
 }
 
 private const val MODULE_PACKAGE = "io.github.bbzq"
+
+private class ModuleResourceContext(
+    base: Context,
+    private val moduleResources: Resources,
+) : ContextWrapper(base) {
+    override fun getPackageName(): String = MODULE_PACKAGE
+
+    override fun getResources(): Resources = moduleResources
+
+    override fun getAssets(): AssetManager = moduleResources.assets
+}
 
 abstract class BaseRoamingHook(
     protected val env: RoamingEnv,

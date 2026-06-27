@@ -112,6 +112,8 @@ object ModuleSettings {
     const val KEY_SYMBOL_SCAN_STATUS_SUMMARY = "symbol_scan_status_summary"
     const val KEY_SYMBOL_SCAN_STATUS_REPORT = "symbol_scan_status_report"
     const val KEY_SYMBOL_SCAN_STATUS_UPDATED_AT = "symbol_scan_status_updated_at"
+    const val KEY_SYMBOL_SCAN_REFRESH_REQUEST_ID = "symbol_scan_refresh_request_id"
+    const val KEY_SYMBOL_SCAN_REFRESH_HANDLED_ID = "symbol_scan_refresh_handled_id"
 
     val defaultStoryVideoAdTags = setOf("ad")
     val defaultSkipVideoAdModes = mapOf(

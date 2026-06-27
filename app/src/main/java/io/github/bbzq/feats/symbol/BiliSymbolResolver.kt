@@ -138,7 +138,6 @@ object BiliSymbolResolver {
 
     fun resolve(
         hostContext: Context,
-        moduleContext: Context?,
         classLoader: ClassLoader,
         log: (String, Throwable?) -> Unit,
     ): BiliHookSymbols {
@@ -147,7 +146,6 @@ object BiliSymbolResolver {
         memorySymbols?.takeIf { it.isUsableWith(fingerprint) }?.let {
             log("BiliSymbolResolver cache hit: memory fp=$fingerprint", null)
             it.formatStatusLines().forEach { line -> log(line, null) }
-            publishStatus(it, "memory", log)
             return it
         }
 
@@ -157,14 +155,12 @@ object BiliSymbolResolver {
             memorySymbols = diskSymbols
             log("BiliSymbolResolver cache hit: disk fp=$fingerprint", null)
             diskSymbols.formatStatusLines().forEach { line -> log(line, null) }
-            publishStatus(diskSymbols, "disk", log)
             return diskSymbols
         }
 
         log("BiliSymbolResolver scan begin fp=$fingerprint", null)
         val scanned = scan(
             hostContext = appContext,
-            moduleContext = moduleContext,
             classLoader = classLoader,
             fingerprint = fingerprint,
             log = log,
@@ -179,7 +175,6 @@ object BiliSymbolResolver {
 
     fun forceRefresh(
         hostContext: Context,
-        moduleContext: Context?,
         classLoader: ClassLoader,
         log: (String, Throwable?) -> Unit,
     ): BiliHookSymbols {
@@ -191,7 +186,6 @@ object BiliSymbolResolver {
         log("BiliSymbolResolver force scan begin fp=$fingerprint", null)
         val scanned = scan(
             hostContext = appContext,
-            moduleContext = moduleContext,
             classLoader = classLoader,
             fingerprint = fingerprint,
             log = log,
@@ -206,7 +200,6 @@ object BiliSymbolResolver {
 
     private fun scan(
         hostContext: Context,
-        moduleContext: Context?,
         classLoader: ClassLoader,
         fingerprint: String,
         log: (String, Throwable?) -> Unit,
@@ -224,8 +217,6 @@ object BiliSymbolResolver {
         fun bridge(): DexKitBridge? {
             bridge?.let { return it }
             val opened = DexKitBridgeProvider.openFirstAvailable(
-                hostContext = hostContext,
-                moduleContext = moduleContext,
                 sourcePaths = sourcePaths,
                 recordError = ::recordError,
                 log = { log(it, null) },

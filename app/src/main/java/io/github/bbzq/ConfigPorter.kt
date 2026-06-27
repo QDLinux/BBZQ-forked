@@ -342,7 +342,7 @@ object ConfigPorter {
                 is Boolean -> editor.putBoolean(key, value)
                 is Int -> editor.putInt(key, value)
                 is String -> editor.putString(key, value)
-                is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toMutableSet())
+                is Set<*> -> editor.putStringSet(key, safeStringSet(value.filterIsInstance<String>()))
                 else -> Unit
             }
         }

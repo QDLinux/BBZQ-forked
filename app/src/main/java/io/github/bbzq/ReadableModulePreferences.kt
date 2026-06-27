@@ -27,8 +27,9 @@ class ReadableModulePreferences(
         }
 
         override fun putStringSet(key: String?, values: MutableSet<String>?): SharedPreferences.Editor {
-            if (key != null) operations += PreferenceOperation.Put(key, values?.toSet())
-            editor.putStringSet(key, values)
+            val safeValues = safeStringSetOrNull(values)
+            if (key != null) operations += PreferenceOperation.Put(key, safeValues)
+            editor.putStringSet(key, safeValues)
             return this
         }
 

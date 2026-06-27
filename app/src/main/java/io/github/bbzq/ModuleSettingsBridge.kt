@@ -1,8 +1,9 @@
 ﻿package io.github.bbzq
 
 import android.app.Application
-import android.content.ContentResolver
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
@@ -14,8 +15,6 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
     private val cacheLock = Any()
     private var localCache: Map<String, Any> = emptyMap()
     private var lastLoadTime = 0L
-    private var providerUnavailable = false
-    private var providerFailureTime = 0L
     private var hasAuthoritativeSnapshot = false
 
     private fun ensureLoaded() {
@@ -40,12 +39,7 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
 
     private fun getAllFromSources(): SettingsSource {
         val remote = getAllFromRemotePreferences()
-        val provider = getAllFromProvider()
-        if (remote.isNotEmpty() && provider.isNotEmpty()) {
-            return SettingsSource(remote + provider, authoritative = true, status = "remote+provider ok")
-        }
         if (remote.isNotEmpty()) return SettingsSource(remote, authoritative = true, status = "remote ok")
-        if (provider.isNotEmpty()) return SettingsSource(provider, authoritative = true, status = "provider ok")
 
         val failedStatus = lastProviderStatus
         val snapshot = getAllFromHostSnapshot()
@@ -60,8 +54,8 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
 
         return SettingsSource(
             fallbackDefaults(),
-            authoritative = false,
-            status = "defaults only; live settings unavailable ($failedStatus)",
+            authoritative = true,
+            status = "defaults only; remote settings unavailable ($failedStatus)",
             persistSnapshot = false,
         )
     }
@@ -77,13 +71,6 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
             lastProviderStatus = "remote ${it.javaClass.simpleName}: ${it.message}"
             emptyMap()
         }
-    }
-
-    private fun getAllFromProvider(): Map<String, Any?> {
-        if (isProviderRetryBlocked()) return emptyMap()
-        val result = call(ModuleSettingsProvider.METHOD_GET_ALL, null, null)
-        val values = result?.keySet()?.associateWith { key -> result.get(key) }.orEmpty()
-        return values
     }
 
     private fun getAllFromHostSnapshot(): Map<String, Any?> =
@@ -108,15 +95,7 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
     override fun getString(key: String?, defValue: String?): String? {
         ensureLoaded()
         return synchronized(cacheLock) { localCache[key] as? String } ?: run {
-            if (hasAuthoritativeSnapshot) return defValue
-            if (isProviderRetryBlocked()) return defValue
-            val result = call(
-                ModuleSettingsProvider.METHOD_GET_STRING,
-                key,
-                Bundle().apply { putString(ModuleSettingsProvider.EXTRA_DEFAULT, defValue) },
-            )
-            result?.getString(ModuleSettingsProvider.EXTRA_VALUE, defValue)
-                ?.also { cacheRuntimeValue(key, it) }
+            defValue
         }
     }
 
@@ -124,40 +103,18 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
         ensureLoaded()
         val cached = synchronized(cacheLock) { localCache[key] }
         val cachedSet = when (cached) {
-            is Set<*> -> cached.map { it.toString() }.toMutableSet()
-            is List<*> -> cached.map { it.toString() }.toMutableSet()
+            is Set<*> -> safeStringSet(cached)
+            is List<*> -> safeStringSet(cached)
             else -> null
         }
         if (cachedSet != null) return cachedSet
-        if (hasAuthoritativeSnapshot) return defValues
-        if (isProviderRetryBlocked()) return defValues
-
-        val result = call(
-            ModuleSettingsProvider.METHOD_GET_STRING_SET,
-            key,
-            Bundle().apply {
-                putStringArrayList(ModuleSettingsProvider.EXTRA_DEFAULT, ArrayList(defValues.orEmpty()))
-            },
-        )
-        return result?.getStringArrayList(ModuleSettingsProvider.EXTRA_VALUE)
-            ?.toMutableSet()
-            ?.also { cacheRuntimeValue(key, it.toSet()) }
-            ?: defValues
+        return defValues
     }
 
     override fun getInt(key: String?, defValue: Int): Int {
         ensureLoaded()
         return (synchronized(cacheLock) { localCache[key] } as? Number)?.toInt() ?: run {
-            if (hasAuthoritativeSnapshot) return defValue
-            if (isProviderRetryBlocked()) return defValue
-            val result = call(
-                ModuleSettingsProvider.METHOD_GET_INT,
-                key,
-                Bundle().apply { putInt(ModuleSettingsProvider.EXTRA_DEFAULT, defValue) },
-            )
-            result?.getInt(ModuleSettingsProvider.EXTRA_VALUE, defValue)
-                ?.also { cacheRuntimeValue(key, it) }
-                ?: defValue
+            defValue
         }
     }
 
@@ -182,26 +139,14 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
     override fun getBoolean(key: String?, defValue: Boolean): Boolean {
         ensureLoaded()
         return (synchronized(cacheLock) { localCache[key] } as? Boolean) ?: run {
-            if (hasAuthoritativeSnapshot) return defValue
-            if (isProviderRetryBlocked()) return defValue
-            val result = call(
-                ModuleSettingsProvider.METHOD_GET_BOOLEAN,
-                key,
-                Bundle().apply { putBoolean(ModuleSettingsProvider.EXTRA_DEFAULT, defValue) },
-            )
-            result?.getBoolean(ModuleSettingsProvider.EXTRA_VALUE, defValue)
-                ?.also { cacheRuntimeValue(key, it) }
-                ?: defValue
+            defValue
         }
     }
 
     override fun contains(key: String?): Boolean {
         ensureLoaded()
         if (synchronized(cacheLock) { localCache.containsKey(key) }) return true
-        if (hasAuthoritativeSnapshot) return false
-        if (isProviderRetryBlocked()) return false
-        val result = call(ModuleSettingsProvider.METHOD_CONTAINS, key, null)
-        return result?.getBoolean(ModuleSettingsProvider.EXTRA_VALUE, false) ?: false
+        return false
     }
 
     override fun edit(): SharedPreferences.Editor = Editor()
@@ -214,38 +159,6 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
         listener: SharedPreferences.OnSharedPreferenceChangeListener?,
     ) = Unit
 
-    private fun call(
-        method: String,
-        arg: String?,
-        extras: Bundle?,
-        recordStatus: Boolean = true,
-    ): Bundle? {
-        val resolver = resolveContentResolver() ?: return null
-        return try {
-            resolver.call(ModuleSettingsProvider.CONTENT_URI, method, arg, extras).also {
-                providerUnavailable = false
-                providerFailureTime = 0L
-                if (recordStatus) {
-                    lastProviderStatus = if (it == null) "$method returned null" else "$method ok"
-                }
-            }
-        } catch (e: IllegalArgumentException) {
-            providerUnavailable = true
-            providerFailureTime = System.currentTimeMillis()
-            if (recordStatus) lastProviderStatus = "$method IllegalArgumentException: ${e.message}"
-            null
-        } catch (e: SecurityException) {
-            providerUnavailable = true
-            providerFailureTime = System.currentTimeMillis()
-            if (recordStatus) lastProviderStatus = "$method SecurityException: ${e.message}"
-            null
-        }
-    }
-
-    private fun resolveContentResolver(): ContentResolver? {
-        return resolveContext()?.moduleAwareContentResolver()
-    }
-
     private fun resolveContext(): Context? {
         cachedContext.get()?.let { return it }
         val application = runCatching {
@@ -254,11 +167,6 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
         cachedContext = WeakReference(application)
         return application
     }
-
-    private fun Context.moduleAwareContentResolver(): ContentResolver =
-        runCatching {
-            createPackageContext(MODULE_PACKAGE, Context.CONTEXT_IGNORE_SECURITY).contentResolver
-        }.getOrDefault(contentResolver)
 
     private fun resolveRemotePreferences(): SharedPreferences? {
         cachedRemotePrefs.get()?.let { return it }
@@ -318,22 +226,56 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
         snapshotToPersist?.let(::persistHostSnapshot)
     }
 
+    private fun applyProviderOperations(operations: List<PreferenceOperation>) {
+        if (operations.isEmpty()) return
+        val context = resolveContext() ?: run {
+            lastProviderStatus = "provider write context unavailable"
+            return
+        }
+        runCatching {
+            operations.forEach { operation ->
+                when (operation) {
+                    PreferenceOperation.Clear -> Unit
+                    is PreferenceOperation.Remove -> {
+                        context.contentResolver.call(
+                            ModuleSettingsProvider.CONTENT_URI,
+                            ModuleSettingsProvider.METHOD_REMOVE,
+                            operation.key,
+                            null,
+                        )
+                    }
+                    is PreferenceOperation.Put -> {
+                        if (operation.value == null) {
+                            context.contentResolver.call(
+                                ModuleSettingsProvider.CONTENT_URI,
+                                ModuleSettingsProvider.METHOD_REMOVE,
+                                operation.key,
+                                null,
+                            )
+                        } else {
+                            context.putProviderValue(operation.key, operation.value)
+                        }
+                    }
+                }
+            }
+            lastProviderStatus = "remote+provider ok"
+        }.onFailure {
+            lastProviderStatus = "provider write ${it.javaClass.simpleName}: ${it.message}"
+            if (!context.sendSettingsUpdateBroadcasts(operations)) {
+                Log.w(LOG_TAG, "runtime settings provider write failed", it)
+            }
+        }
+    }
+
     private inner class Editor : SharedPreferences.Editor {
-        private val operations = mutableListOf<() -> Unit>()
+        private val providerOperations = mutableListOf<PreferenceOperation>()
         private val cacheUpdates = mutableListOf<(MutableMap<String, Any>) -> Unit>()
         private val hostSnapshotUpdateKeys = linkedSetOf<String>()
         private var clearRequested = false
 
         override fun putString(key: String?, value: String?): SharedPreferences.Editor = apply {
             recordHostSnapshotUpdate(key)
-            operations += {
-                call(
-                    ModuleSettingsProvider.METHOD_PUT_STRING,
-                    key,
-                    Bundle().apply { putString(ModuleSettingsProvider.EXTRA_VALUE, value) },
-                    recordStatus = false,
-                )
-            }
+            if (key != null) providerOperations += PreferenceOperation.Put(key, value)
             cacheUpdates += { cache ->
                 if (key != null && value != null) cache[key] = value
                 else if (key != null) cache.remove(key)
@@ -345,82 +287,47 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
             values: MutableSet<String>?,
         ): SharedPreferences.Editor = apply {
             recordHostSnapshotUpdate(key)
-            operations += {
-                call(
-                    ModuleSettingsProvider.METHOD_PUT_STRING_SET,
-                    key,
-                    Bundle().apply {
-                        putStringArrayList(ModuleSettingsProvider.EXTRA_VALUE, ArrayList(values.orEmpty()))
-                    },
-                    recordStatus = false,
-                )
-            }
+            val safeValues = safeStringSetOrNull(values)
+            if (key != null) providerOperations += PreferenceOperation.Put(key, safeValues)
             cacheUpdates += { cache ->
-                if (key != null && values != null) cache[key] = values.toSet()
+                if (key != null && safeValues != null) cache[key] = safeValues
                 else if (key != null) cache.remove(key)
             }
         }
 
         override fun putInt(key: String?, value: Int): SharedPreferences.Editor = apply {
             recordHostSnapshotUpdate(key)
-            operations += {
-                call(
-                    ModuleSettingsProvider.METHOD_PUT_INT,
-                    key,
-                    Bundle().apply { putInt(ModuleSettingsProvider.EXTRA_VALUE, value) },
-                    recordStatus = false,
-                )
-            }
+            if (key != null) providerOperations += PreferenceOperation.Put(key, value)
             cacheUpdates += { cache -> if (key != null) cache[key] = value }
         }
 
         override fun putLong(key: String?, value: Long): SharedPreferences.Editor = apply {
             recordHostSnapshotUpdate(key)
-            operations += {
-                call(
-                    ModuleSettingsProvider.METHOD_PUT_STRING,
-                    key,
-                    Bundle().apply { putString(ModuleSettingsProvider.EXTRA_VALUE, value.toString()) },
-                    recordStatus = false,
-                )
-            }
+            if (key != null) providerOperations += PreferenceOperation.Put(key, value.toString())
             cacheUpdates += { cache -> if (key != null) cache[key] = value.toString() }
         }
 
         override fun putFloat(key: String?, value: Float): SharedPreferences.Editor = apply {
             recordHostSnapshotUpdate(key)
-            operations += {
-                call(
-                    ModuleSettingsProvider.METHOD_PUT_STRING,
-                    key,
-                    Bundle().apply { putString(ModuleSettingsProvider.EXTRA_VALUE, value.toString()) },
-                    recordStatus = false,
-                )
-            }
+            if (key != null) providerOperations += PreferenceOperation.Put(key, value.toString())
             cacheUpdates += { cache -> if (key != null) cache[key] = value.toString() }
         }
 
         override fun putBoolean(key: String?, value: Boolean): SharedPreferences.Editor = apply {
             recordHostSnapshotUpdate(key)
-            operations += {
-                call(
-                    ModuleSettingsProvider.METHOD_PUT_BOOLEAN,
-                    key,
-                    Bundle().apply { putBoolean(ModuleSettingsProvider.EXTRA_VALUE, value) },
-                    recordStatus = false,
-                )
-            }
+            if (key != null) providerOperations += PreferenceOperation.Put(key, value)
             cacheUpdates += { cache -> if (key != null) cache[key] = value }
         }
 
         override fun remove(key: String?): SharedPreferences.Editor = apply {
             recordHostSnapshotUpdate(key)
-            operations += { call(ModuleSettingsProvider.METHOD_REMOVE, key, null, recordStatus = false) }
+            if (key != null) providerOperations += PreferenceOperation.Remove(key)
             cacheUpdates += { cache -> if (key != null) cache.remove(key) }
         }
 
         override fun clear(): SharedPreferences.Editor = apply {
             clearRequested = true
+            providerOperations += PreferenceOperation.Clear
         }
 
         override fun commit(): Boolean {
@@ -430,12 +337,7 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
 
         override fun apply() {
             ensureLoaded()
-            if (clearRequested) {
-                synchronized(cacheLock) { localCache.keys.toList() }.forEach { key ->
-                    call(ModuleSettingsProvider.METHOD_REMOVE, key, null, recordStatus = false)
-                }
-            }
-            operations.forEach { it() }
+            applyProviderOperations(providerOperations)
 
             var snapshotToPersist: Map<String, Any>? = null
             var snapshotUpdatesToPersist: Map<String, Any?>? = null
@@ -453,7 +355,7 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
             snapshotToPersist?.let(::persistHostSnapshot)
             snapshotUpdatesToPersist?.let(::persistHostSnapshotUpdates)
 
-            operations.clear()
+            providerOperations.clear()
             cacheUpdates.clear()
             hostSnapshotUpdateKeys.clear()
             clearRequested = false
@@ -466,13 +368,13 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
 
     companion object {
         private const val CACHE_EXPIRATION = 5000L
-        private const val MODULE_PACKAGE = "io.github.bbzq"
         const val HOST_SNAPSHOT_PREFS_NAME = "bbzq_runtime_settings_snapshot"
         private const val LOG_TAG = "BBZQ"
         private val HOST_SNAPSHOT_UPDATE_KEYS = setOf(
             ModuleSettings.KEY_SYMBOL_SCAN_STATUS_SUMMARY,
             ModuleSettings.KEY_SYMBOL_SCAN_STATUS_REPORT,
             ModuleSettings.KEY_SYMBOL_SCAN_STATUS_UPDATED_AT,
+            ModuleSettings.KEY_SYMBOL_SCAN_REFRESH_HANDLED_ID,
         )
         private var cachedContext = WeakReference<Context>(null)
         private var cachedXposed: XposedInterface? = null
@@ -500,24 +402,9 @@ class ModuleSettingsBridge private constructor() : SharedPreferences {
         synchronized(cacheLock) {
             localCache = emptyMap()
             lastLoadTime = 0L
-            providerUnavailable = false
-            providerFailureTime = 0L
             hasAuthoritativeSnapshot = false
         }
         cachedRemotePrefs = WeakReference(null)
-    }
-
-    private fun isProviderRetryBlocked(): Boolean {
-        val now = System.currentTimeMillis()
-        synchronized(cacheLock) {
-            if (!providerUnavailable) return false
-            if (now - providerFailureTime >= CACHE_EXPIRATION) {
-                providerUnavailable = false
-                providerFailureTime = 0L
-                return false
-            }
-            return true
-        }
     }
 
     private data class SettingsSource(
@@ -541,8 +428,107 @@ private fun SharedPreferences.Editor.applyValue(key: String, value: Any): Shared
         is Long -> putLong(key, value)
         is Float -> putFloat(key, value)
         is String -> putString(key, value)
-        is Set<*> -> putStringSet(key, value.map { it.toString() }.toSet())
-        is List<*> -> putStringSet(key, value.map { it.toString() }.toSet())
+        is Set<*> -> putStringSet(key, safeStringSet(value))
+        is List<*> -> putStringSet(key, safeStringSet(value))
         else -> putString(key, value.toString())
     }
 }
+
+private fun Context.putProviderValue(key: String, value: Any) {
+    val extras = Bundle()
+    val method = when (value) {
+        is Boolean -> {
+            extras.putBoolean(ModuleSettingsProvider.EXTRA_VALUE, value)
+            ModuleSettingsProvider.METHOD_PUT_BOOLEAN
+        }
+        is Int -> {
+            extras.putInt(ModuleSettingsProvider.EXTRA_VALUE, value)
+            ModuleSettingsProvider.METHOD_PUT_INT
+        }
+        is String -> {
+            extras.putString(ModuleSettingsProvider.EXTRA_VALUE, value)
+            ModuleSettingsProvider.METHOD_PUT_STRING
+        }
+        is Set<*> -> {
+            extras.putStringArrayList(ModuleSettingsProvider.EXTRA_VALUE, ArrayList(safeStringSet(value)))
+            ModuleSettingsProvider.METHOD_PUT_STRING_SET
+        }
+        is List<*> -> {
+            extras.putStringArrayList(ModuleSettingsProvider.EXTRA_VALUE, ArrayList(safeStringSet(value)))
+            ModuleSettingsProvider.METHOD_PUT_STRING_SET
+        }
+        else -> {
+            extras.putString(ModuleSettingsProvider.EXTRA_VALUE, value.toString())
+            ModuleSettingsProvider.METHOD_PUT_STRING
+        }
+    }
+    contentResolver.call(ModuleSettingsProvider.CONTENT_URI, method, key, extras)
+}
+
+private fun Context.sendSettingsUpdateBroadcasts(operations: List<PreferenceOperation>): Boolean {
+    var sent = false
+    operations.forEach { operation ->
+        val intent = Intent(ModuleSettingsUpdateReceiver.ACTION_UPDATE).apply {
+            component = ComponentName(MODULE_PACKAGE, SETTINGS_UPDATE_RECEIVER)
+        }
+        when (operation) {
+            PreferenceOperation.Clear -> return@forEach
+            is PreferenceOperation.Remove -> {
+                intent.putExtra(ModuleSettingsUpdateReceiver.EXTRA_KEY, operation.key)
+                intent.putExtra(ModuleSettingsUpdateReceiver.EXTRA_REMOVE, true)
+            }
+            is PreferenceOperation.Put -> {
+                intent.putExtra(ModuleSettingsUpdateReceiver.EXTRA_KEY, operation.key)
+                val value = operation.value
+                if (value == null) {
+                    intent.putExtra(ModuleSettingsUpdateReceiver.EXTRA_REMOVE, true)
+                } else {
+                    intent.putPreferenceValue(value)
+                }
+            }
+        }
+        runCatching {
+            sendBroadcast(intent)
+            sent = true
+        }.onFailure {
+            Log.w("BBZQ", "settings update broadcast send failed: ${it.javaClass.simpleName}: ${it.message}")
+        }
+    }
+    return sent
+}
+
+private fun Intent.putPreferenceValue(value: Any) {
+    when (value) {
+        is Boolean -> {
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_TYPE, ModuleSettingsUpdateReceiver.TYPE_BOOLEAN)
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_BOOLEAN, value)
+        }
+        is Int -> {
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_TYPE, ModuleSettingsUpdateReceiver.TYPE_INT)
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_INT, value)
+        }
+        is Long -> {
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_TYPE, ModuleSettingsUpdateReceiver.TYPE_LONG)
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_LONG, value)
+        }
+        is Float -> {
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_TYPE, ModuleSettingsUpdateReceiver.TYPE_FLOAT)
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_FLOAT, value)
+        }
+        is Set<*> -> {
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_TYPE, ModuleSettingsUpdateReceiver.TYPE_STRING_SET)
+            putStringArrayListExtra(ModuleSettingsUpdateReceiver.EXTRA_STRING_LIST, ArrayList(safeStringSet(value)))
+        }
+        is List<*> -> {
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_TYPE, ModuleSettingsUpdateReceiver.TYPE_STRING_SET)
+            putStringArrayListExtra(ModuleSettingsUpdateReceiver.EXTRA_STRING_LIST, ArrayList(safeStringSet(value)))
+        }
+        else -> {
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_TYPE, ModuleSettingsUpdateReceiver.TYPE_STRING)
+            putExtra(ModuleSettingsUpdateReceiver.EXTRA_STRING, value.toString())
+        }
+    }
+}
+
+private const val MODULE_PACKAGE = "io.github.bbzq"
+private const val SETTINGS_UPDATE_RECEIVER = "io.github.bbzq.ModuleSettingsUpdateReceiver"

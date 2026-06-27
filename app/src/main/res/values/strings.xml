@@ -230,6 +230,8 @@
     <string name="symbol_cache_refresh_dialog_message">当前扫描结果：\n%1$s\n\n</string>
     <string name="symbol_cache_refresh_confirm">清除并重扫</string>
     <string name="symbol_cache_refresh_running_toast">正在重新混淆扫描</string>
+    <string name="symbol_cache_refresh_complete_restart_toast">完成混淆重扫，正在重启 B 站</string>
+    <string name="symbol_cache_refresh_launch_host_failed_toast">无法打开 B 站，请手动返回后等待重扫完成</string>
 
     <!-- 對話框 / 吐司 -->
     <string name="version_hidden_entry_toast">已显示隐藏入口</string>

@@ -1,6 +1,5 @@
 package io.github.bbzq
 
-import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
@@ -795,45 +794,40 @@ class SettingsContentFactory(
 
     private fun startSymbolCacheRefresh() {
         val appContext = context.applicationContext ?: context
-        val hostLaunched = launchHostApp()
         Toast.makeText(appContext, R.string.symbol_cache_refresh_running_toast, Toast.LENGTH_SHORT).show()
-        if (hostLaunched) {
-            (context as? Activity)?.finish()
-        }
-        ModuleRemotePreferences.requestSymbolCacheRefresh { result ->
-            Toast.makeText(appContext, result.message, Toast.LENGTH_LONG).show()
-            if (::symbolScanStatusSummary.isInitialized && !isActivityFinishing()) {
+        ModuleRemotePreferences.requestSymbolCacheRefresh { message ->
+            Toast.makeText(appContext, message, Toast.LENGTH_LONG).show()
+            if (::symbolScanStatusSummary.isInitialized) {
                 symbolScanStatusSummary.text = symbolScanSummary()
             }
         }
+        launchHostAppForSymbolRefresh(appContext)
     }
 
-    private fun launchHostApp(): Boolean {
-        val packages = sequenceOf(
-            prefs.getString(ModuleSettings.KEY_RUNTIME_HOST_PACKAGE, null),
-            "tv.danmaku.bili",
-            "com.bilibili.app.in",
-            "tv.danmaku.bilibilihd",
-            "com.bilibili.app.blue",
-        ).filterNotNull().distinct()
-        val intent = packages.firstNotNullOfOrNull { packageName ->
-            context.packageManager.getLaunchIntentForPackage(packageName)
-        } ?: return false
-        intent.addFlags(
-            Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED,
-        )
-        return runCatching {
-            context.startActivity(intent)
-            true
-        }.getOrDefault(false)
+    private fun launchHostAppForSymbolRefresh(appContext: Context) {
+        val hostPackage = symbolRefreshHostPackages()
+            .firstNotNullOfOrNull { packageName ->
+                appContext.packageManager.getLaunchIntentForPackage(packageName)
+            }
+            ?: run {
+                Toast.makeText(appContext, R.string.symbol_cache_refresh_launch_host_failed_toast, Toast.LENGTH_SHORT).show()
+                return
+            }
+        hostPackage.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching {
+            appContext.startActivity(hostPackage)
+        }.onFailure {
+            Toast.makeText(appContext, R.string.symbol_cache_refresh_launch_host_failed_toast, Toast.LENGTH_SHORT).show()
+        }
     }
 
-    private fun isActivityFinishing(): Boolean {
-        val activity = context as? Activity ?: return false
-        return activity.isFinishing || activity.isDestroyed
+    private fun symbolRefreshHostPackages(): List<String> {
+        val recorded = prefs.getString(ModuleSettings.KEY_RUNTIME_HOST_PACKAGE, null)
+            ?.takeIf { it.isNotBlank() && it != UNKNOWN_RUNTIME_VALUE }
+        return buildList {
+            if (recorded != null) add(recorded)
+            SUPPORTED_HOST_PACKAGES.forEach { if (it !in this) add(it) }
+        }
     }
 
     private fun symbolScanSummary(): String {
@@ -1700,5 +1694,12 @@ class SettingsContentFactory(
         private val CANCEL_ACTION_COLOR = Color.parseColor("#00A1D6")
         private const val VERSION_TAP_WINDOW_MS = 1500L
         private const val TITLE_KEYWORD_SUMMARY_MAX_ITEMS = 4
+        private const val UNKNOWN_RUNTIME_VALUE = "unknown"
+        private val SUPPORTED_HOST_PACKAGES = listOf(
+            "tv.danmaku.bili",
+            "com.bilibili.app.in",
+            "tv.danmaku.bilibilihd",
+            "com.bilibili.app.blue",
+        )
     }
 }

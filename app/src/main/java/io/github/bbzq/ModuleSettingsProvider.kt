@@ -22,7 +22,7 @@ class ModuleSettingsProvider : ContentProvider() {
             METHOD_GET_INT -> bundleOfInt(prefs.getInt(requireKey(arg), extras?.getInt(EXTRA_DEFAULT) ?: 0))
             METHOD_GET_STRING -> bundleOfString(prefs.getString(requireKey(arg), extras?.getString(EXTRA_DEFAULT)))
             METHOD_GET_STRING_SET -> bundleOfStringSet(
-                prefs.getStringSet(requireKey(arg), extras?.getStringArrayList(EXTRA_DEFAULT)?.toSet())
+                prefs.getStringSet(requireKey(arg), safeStringSetOrNull(extras?.getStringArrayList(EXTRA_DEFAULT)))
                     ?.toList()
                     .orEmpty(),
             )
@@ -40,7 +40,7 @@ class ModuleSettingsProvider : ContentProvider() {
             }
             METHOD_PUT_STRING_SET -> {
                 prefs.edit()
-                    .putStringSet(requireKey(arg), extras?.getStringArrayList(EXTRA_VALUE)?.toSet())
+                    .putStringSet(requireKey(arg), safeStringSetOrNull(extras?.getStringArrayList(EXTRA_VALUE)))
                     .apply()
                 Bundle.EMPTY
             }
