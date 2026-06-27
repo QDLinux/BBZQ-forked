@@ -86,8 +86,8 @@ object BiliSymbolResolver {
     private const val HP_HOME_TOP_BAR_VIEW_CREATED = "HomeTopBarPurifyHook.OnViewCreated"
     private const val HP_HOME_TOP_BAR_DEFAULT_WORD = "HomeTopBarPurifyHook.DefaultSearchWord"
     private const val HP_BOTTOM_BAR = "BottomBarHook.InstallPoints"
-    private const val HP_BOTTOM_BAR_JSON_PARSER = "BottomBarHook.JsonParser"
-    private const val HP_BOTTOM_BAR_RESOURCE = "BottomBarHook.ResourceManager"
+    private const val HP_BOTTOM_BAR_TAB_HOST = "BottomBarHook.TabHost"
+    private const val HP_BOTTOM_BAR_VIEW_CREATED = "BottomBarHook.BaseOnViewCreated"
     private const val HP_HOME_RECOMMEND_FEED = "HomeRecommendFeed.Pegasus"
     private const val HP_HOME_RECOMMEND_TABS = "HomeRecommendTabs.BuildTabs"
     private const val HP_HOME_COMPONENT_HIDE = "HomeComponentHideHook.Components"
@@ -1831,41 +1831,63 @@ object BiliSymbolResolver {
     private fun scanBottomBar(
         classLoader: ClassLoader,
     ): SymbolScanResult<BottomBarSymbols> {
-        val parserMethods = buildList {
-            addParserMethod(classLoader, "com.alibaba.fastjson.JSON", "parseObject", "java.lang.String", "java.lang.reflect.Type", "int", "[Lcom.alibaba.fastjson.parser.Feature;")
-            addParserMethod(classLoader, "com.alibaba.fastjson.JSON", "parseObject", "java.lang.String", "java.lang.Class", "int", "[Lcom.alibaba.fastjson.parser.Feature;")
-            addParserMethod(classLoader, "com.alibaba.fastjson2.JSON", "parseObject", "java.lang.String", "java.lang.reflect.Type", "[Lcom.alibaba.fastjson2.JSONReader\$Feature;")
-            addParserMethod(classLoader, "com.google.gson.Gson", "fromJson", "java.lang.String", "java.lang.reflect.Type")
-            addParserMethod(classLoader, "com.google.gson.Gson", "fromJson", "java.io.Reader", "java.lang.reflect.Type")
-        }.distinctBy(Method::toGenericString)
-
-        val resourceMethods = BOTTOM_RESOURCE_MANAGER_CLASSES
+        val tabHostClasses = BOTTOM_TAB_HOST_CLASSES.mapNotNull(classLoader::loadClassOrNull)
+        val tabHostSetTabsMethods = tabHostClasses
             .asSequence()
-            .mapNotNull { classLoader.loadClassOrNull(it) }
-            .flatMap { type ->
-                type.declaredMethods.asSequence()
-                    .filter { method ->
-                        method.name in BOTTOM_RESOURCE_MANAGER_METHOD_NAMES &&
-                            List::class.java.isAssignableFrom(method.returnType) &&
-                            method.parameterCount == 2 &&
-                            method.parameterTypes.firstOrNull() == Int::class.javaPrimitiveType &&
-                            List::class.java.isAssignableFrom(method.parameterTypes[1])
-                    }
+            .flatMap { it.allMethods() }
+            .filter { method ->
+                method.name == "setTabs" &&
+                    method.parameterCount == 1 &&
+                    List::class.java.isAssignableFrom(method.parameterTypes[0]) &&
+                    method.returnType == Void.TYPE
             }
             .distinctBy(Method::toGenericString)
             .toList()
+        val tabHostGetTabsMethods = tabHostClasses
+            .asSequence()
+            .flatMap { it.allMethods() }
+            .filter { method ->
+                method.name == "getTabs" &&
+                    method.parameterCount == 0 &&
+                    List::class.java.isAssignableFrom(method.returnType)
+            }
+            .distinctBy(Method::toGenericString)
+            .toList()
+        val baseOnViewCreatedMethods = classLoader.loadClassOrNull(HOME_BASE_MAIN_FRAME_FRAGMENT)
+            ?.allMethods()
+            ?.filter { method ->
+                method.name == "onViewCreated" &&
+                    method.parameterCount == 2 &&
+                    method.parameterTypes[0] == View::class.java &&
+                    method.parameterTypes[1] == Bundle::class.java &&
+                    method.returnType == Void.TYPE
+            }
+            ?.distinctBy(Method::toGenericString)
+            ?.toList()
+            .orEmpty()
 
-        if (parserMethods.isEmpty() && resourceMethods.isEmpty()) {
+        if (tabHostSetTabsMethods.isEmpty() || tabHostGetTabsMethods.isEmpty()) {
             return SymbolScanResult.Missing("bottom bar hook points not found")
         }
         val symbols = BottomBarSymbols(
-            parserMethods = parserMethods.map(MethodDescriptor::of),
-            resourceMethods = resourceMethods.map(MethodDescriptor::of),
-            evidence = "parsers=${parserMethods.size},resources=${resourceMethods.size}",
+            tabHostSetTabsMethods = tabHostSetTabsMethods.map(MethodDescriptor::of),
+            tabHostGetTabsMethods = tabHostGetTabsMethods.map(MethodDescriptor::of),
+            baseOnViewCreatedMethods = baseOnViewCreatedMethods.map(MethodDescriptor::of),
+            evidence = "setTabs=${tabHostSetTabsMethods.size},getTabs=${tabHostGetTabsMethods.size},onViewCreated=${baseOnViewCreatedMethods.size}",
         )
         val hookPoints = listOf(
-            optionalChildHookPoint(HP_BOTTOM_BAR_JSON_PARSER, parserMethods.isNotEmpty(), "json parser hook methods not found", "methods=${parserMethods.size}"),
-            optionalChildHookPoint(HP_BOTTOM_BAR_RESOURCE, resourceMethods.isNotEmpty(), "resource manager hook methods not found", "methods=${resourceMethods.size}"),
+            childHookPoint(
+                HP_BOTTOM_BAR_TAB_HOST,
+                tabHostSetTabsMethods.isNotEmpty() && tabHostGetTabsMethods.isNotEmpty(),
+                "TabHost getTabs/setTabs methods not found",
+                "setTabs=${tabHostSetTabsMethods.size},getTabs=${tabHostGetTabsMethods.size}",
+            ),
+            optionalChildHookPoint(
+                HP_BOTTOM_BAR_VIEW_CREATED,
+                baseOnViewCreatedMethods.isNotEmpty(),
+                "BaseMainFrameFragment.onViewCreated not found",
+                "methods=${baseOnViewCreatedMethods.size}",
+            ),
         )
         return SymbolScanResult.Found(symbols, "BottomBar", symbols.evidence, hookPoints)
     }
@@ -3392,11 +3414,9 @@ object BiliSymbolResolver {
     private const val HOME_BASE_MAIN_FRAME_FRAGMENT = "tv.danmaku.bili.ui.main2.basic.BaseMainFrameFragment"
     private const val HOME_MAIN_FRAGMENT = "tv.danmaku.bili.ui.main2.MainFragment"
     private const val HOME_DEFAULT_SEARCH_WORD_CLASS = "com.bilibili.app.comm.list.common.api.b"
-    private val BOTTOM_RESOURCE_MANAGER_CLASSES = setOf(
-        "tv.danmaku.bili.ui.main2.resource.MainResourceManager",
-        "tv.danmaku.p9138bili.p9228ui.main2.resource.MainResourceManager",
+    private val BOTTOM_TAB_HOST_CLASSES = setOf(
+        "com.bilibili.lib.homepage.widget.TabHost",
     )
-    private val BOTTOM_RESOURCE_MANAGER_METHOD_NAMES = setOf("m171910c", "m171911d")
     private val PEGASUS_RESPONSE_CLASSES = arrayOf(
         "com.bilibili.pegasus.data.base.PegasusResponse",
         "com.bilibili.pegasus.p5730data.p5731base.PegasusResponse",

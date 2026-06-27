@@ -4,47 +4,55 @@ import io.github.bbzq.ModuleSettings
 import io.github.bbzq.feats.BaseRoamingHook
 import io.github.bbzq.feats.RoamingEnv
 import io.github.bbzq.feats.allFields
-import io.github.bbzq.feats.getObjectField
 import io.github.bbzq.feats.hookAfter
+import io.github.bbzq.feats.hookBefore
 
 class BottomBarHook(env: RoamingEnv) : BaseRoamingHook(env) {
     override fun startHook() {
         ModuleSettings.refreshKnownBottomBarItemsCache(prefs)
         val symbols = env.symbols?.bottomBar?.restore(classLoader)
-        val parserMethods = symbols?.parserMethods.orEmpty()
-        val resourceMethods = symbols?.resourceMethods.orEmpty()
+        val tabHostSetTabsMethods = symbols?.tabHostSetTabsMethods.orEmpty()
+        val tabHostGetTabsMethods = symbols?.tabHostGetTabsMethods.orEmpty()
+        val baseOnViewCreatedMethods = symbols?.baseOnViewCreatedMethods.orEmpty()
 
-        parserMethods.forEach { method ->
-            env.hookAfter(method) { param ->
+        tabHostSetTabsMethods.forEach { method ->
+            env.hookBefore(method) { param ->
                 runCatching {
-                    dispatch(param.result)?.let { updated ->
-                        if (updated !== param.result) {
-                            param.result = updated
+                    val tabs = param.args.getOrNull(0) as? List<*> ?: return@runCatching
+                    dispatch(tabs)?.let { updated ->
+                        if (updated !== tabs) {
+                            param.args[0] = updated
                         }
                     }
+                }.onFailure {
+                    log("Bottom bar TabHost processor failed at ${method.declaringClass.name}.${method.name}", it)
                 }
-                    .onFailure {
-                        log("Bottom bar processor failed at ${method.declaringClass.name}.${method.name}", it)
-                    }
-                }
-        }
-
-        resourceMethods.forEach { method ->
-            env.hookAfter(method) { param ->
-                runCatching {
-                    dispatch(param.result)?.let { updated ->
-                        if (updated !== param.result) {
-                            param.result = updated
-                        }
-                    }
-                }
-                    .onFailure {
-                        log("Bottom bar resource processor failed at ${method.declaringClass.name}.${method.name}", it)
-                    }
             }
         }
 
-        val totalMethods = parserMethods.size + resourceMethods.size
+        val tabHostClass = tabHostSetTabsMethods.firstOrNull()?.declaringClass
+        baseOnViewCreatedMethods.forEach { method ->
+            env.hookAfter(method) { param ->
+                runCatching {
+                    val host = param.thisObject?.findTabHost(tabHostClass) ?: return@runCatching
+                    val getTabs = tabHostGetTabsMethods.firstOrNull { it.declaringClass.isInstance(host) }
+                        ?: return@runCatching
+                    val setTabs = tabHostSetTabsMethods.firstOrNull { it.declaringClass.isInstance(host) }
+                        ?: return@runCatching
+                    val tabs = getTabs.invoke(host) as? List<*> ?: return@runCatching
+                    val updated = tabs.toMutableList()
+                    val originalSize = updated.size
+                    dispatch(updated)
+                    if (updated.size != originalSize) {
+                        setTabs.invoke(host, updated)
+                    }
+                }.onFailure {
+                    log("Bottom bar onViewCreated processor failed at ${method.declaringClass.name}.${method.name}", it)
+                }
+            }
+        }
+
+        val totalMethods = tabHostSetTabsMethods.size + baseOnViewCreatedMethods.size
         if (totalMethods == 0) {
             log("startHook: BottomBar, no hook point found")
         } else {
@@ -52,29 +60,15 @@ class BottomBarHook(env: RoamingEnv) : BaseRoamingHook(env) {
         }
     }
 
-    private fun dispatch(rawResult: Any?): Any? {
-        val result = unwrap(rawResult) ?: return null
-        val bottom = when (result) {
-            is MutableList<*> -> {
-                @Suppress("UNCHECKED_CAST")
-                result as MutableList<Any?>
-            }
-
-            is List<*> -> result.toMutableList() as MutableList<Any?>
-
-            else -> {
-                if (!result.isTabResponse()) return null
-                result.extractBottomItems() ?: return null
-            }
-        }
-
+    @Suppress("UNCHECKED_CAST")
+    private fun dispatch(tabs: List<*>): List<*>? {
+        val bottom = tabs as? MutableList<Any?> ?: tabs.toMutableList() as MutableList<Any?>
         val hiddenIds = ModuleSettings.getHiddenBottomBarItems(prefs)
         val enabled = ModuleSettings.isCustomBottomBarEnabled(prefs)
         val knownItems = linkedSetOf<String>()
 
-        bottom.removeAll { item ->
+        val changed = bottom.removeAll { item ->
             val entry = item?.extractBottomEntry() ?: return@removeAll false
-
             knownItems += encodeBottomItem(
                 order = knownItems.size,
                 id = entry.id,
@@ -85,80 +79,10 @@ class BottomBarHook(env: RoamingEnv) : BaseRoamingHook(env) {
         }
 
         saveKnownItems(knownItems)
-        return if (result is List<*> && result !is MutableList<*>) bottom else result
-    }
-
-    private fun unwrap(result: Any?): Any? {
-        if (result == null) return null
-        val className = result.javaClass.name
-        return if (className.endsWith("GeneralResponse") || className.endsWith("RxGeneralResponse")) {
-            result.getObjectField("data")
-        } else {
-            result
-        }
-    }
-
-    private fun Any.isTabResponse(): Boolean {
-        val className = javaClass.name
-        if (className in TAB_RESPONSE_CLASSES || className.endsWith("MainResourceManager\$TabResponse")) {
-            return true
-        }
-        return className.endsWith("TabResponse") || javaClass.allFields().any { field ->
-            field.name == "tabData" || field.name == "bottom" || field.name == "items"
-        }
-    }
-
-    private fun Any.extractBottomItems(): MutableList<Any?>? {
-        readAny("tabData", "data")?.readMutableList("bottom", "items")?.let { return it }
-        readMutableList("bottom", "items")?.let { return it }
-        return findBottomItemsDeep()
-    }
-
-    private fun Any.findBottomItemsDeep(
-        visited: MutableSet<Int> = linkedSetOf(),
-        depth: Int = 3,
-    ): MutableList<Any?>? {
-        if (depth < 0) return null
-        val identity = System.identityHashCode(this)
-        if (!visited.add(identity)) return null
-
-        javaClass.allFields().forEach { field ->
-            val value = runCatching { field.get(this) }.getOrNull() ?: return@forEach
-            when (value) {
-                is MutableList<*> -> {
-                    if (value.any { it?.extractBottomEntry() != null }) {
-                        @Suppress("UNCHECKED_CAST")
-                        return value as MutableList<Any?>
-                    }
-                }
-
-                is List<*> -> {
-                    if (value.any { it?.extractBottomEntry() != null }) {
-                        @Suppress("UNCHECKED_CAST")
-                        return value as? MutableList<Any?>
-                    }
-                }
-
-                else -> {
-                    if (depth == 0 || field.type.isPrimitive || isLeafType(field.type)) return@forEach
-                    (value as? Any)?.findBottomItemsDeep(visited, depth - 1)?.let { return it }
-                }
-            }
-        }
-
-        return null
+        return if (changed) bottom else null
     }
 
     private fun Any.extractBottomEntry(): BottomBarEntry? {
-        val id = readString("tabId", "f498840tabId", "id")?.takeIf { it.isNotBlank() }
-        val name = readString("name", "f498841name", "title")?.takeIf { it.isNotBlank() }
-        val uri = readString("uri", "f498844uri", "jumpUrl")?.takeIf { it.isNotBlank() }
-        if (id != null || name != null || uri != null) {
-            val resolvedId = id ?: name ?: uri ?: return null
-            val resolvedName = name ?: id ?: uri ?: resolvedId
-            return BottomBarEntry(resolvedId, resolvedName, uri.orEmpty())
-        }
-
         val strings = javaClass.allFields()
             .mapNotNull { field ->
                 runCatching { field.get(this) as? String }.getOrNull()?.trim()
@@ -169,7 +93,8 @@ class BottomBarHook(env: RoamingEnv) : BaseRoamingHook(env) {
         val guessedUri = strings.firstOrNull(::looksLikeUri)
         val guessedName = strings.firstOrNull(::looksLikeDisplayName)
             ?: strings.firstOrNull { it != guessedUri && it.length > 1 }
-        val guessedId = strings.firstOrNull(::looksLikeBottomBarId)
+        val guessedId = strings.firstOrNull { it != guessedUri && it != guessedName && looksLikeAsciiId(it) }
+            ?: strings.firstOrNull { it != guessedUri && it != guessedName && looksLikeBottomBarId(it) }
             ?: strings.firstOrNull { it != guessedUri && it != guessedName }
 
         if (guessedId == null && guessedName == null && guessedUri == null) return null
@@ -178,19 +103,15 @@ class BottomBarHook(env: RoamingEnv) : BaseRoamingHook(env) {
         return BottomBarEntry(resolvedId, resolvedName, guessedUri.orEmpty())
     }
 
-    private fun Any.readAny(vararg names: String): Any? =
-        names.firstNotNullOfOrNull { name -> getObjectField(name) }
-
-    private fun Any.readString(vararg names: String): String? =
-        readAny(*names)?.toString()
-
-    @Suppress("UNCHECKED_CAST")
-    private fun Any.readMutableList(vararg names: String): MutableList<Any?>? {
-        names.forEach { name ->
-            val value = getObjectField(name) as? MutableList<Any?>
-            if (value != null) return value
-        }
-        return null
+    private fun Any.findTabHost(tabHostClass: Class<*>?): Any? {
+        if (tabHostClass == null) return null
+        if (tabHostClass.isInstance(this)) return this
+        return javaClass.allFields()
+            .firstNotNullOfOrNull { field ->
+                runCatching { field.get(this) }
+                    .getOrNull()
+                    ?.takeIf(tabHostClass::isInstance)
+            }
     }
 
     private fun looksLikeUri(value: String): Boolean =
@@ -212,12 +133,10 @@ class BottomBarHook(env: RoamingEnv) : BaseRoamingHook(env) {
         return value.any { it.isLetterOrDigit() || it == '_' || it == '-' }
     }
 
-    private fun isLeafType(type: Class<*>): Boolean =
-        type.name.startsWith("java.") ||
-            type.name.startsWith("kotlin.") ||
-            type.name.startsWith("android.") ||
-            type.name.startsWith("androidx.") ||
-            type.isEnum
+    private fun looksLikeAsciiId(value: String): Boolean {
+        if (!looksLikeBottomBarId(value)) return false
+        return value.all { it.code in 0x21..0x7E }
+    }
 
     private fun saveKnownItems(items: Set<String>) {
         if (items.isEmpty()) return
@@ -246,9 +165,5 @@ class BottomBarHook(env: RoamingEnv) : BaseRoamingHook(env) {
 
     private companion object {
         private const val ITEM_SEPARATOR = "\t"
-        private val TAB_RESPONSE_CLASSES = setOf(
-            "tv.danmaku.bili.ui.main2.resource.MainResourceManager\$TabResponse",
-            "tv.danmaku.p9138bili.p9228ui.main2.resource.MainResourceManager\$TabResponse",
-        )
     }
 }

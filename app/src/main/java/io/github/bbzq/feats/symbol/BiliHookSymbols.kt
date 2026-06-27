@@ -141,7 +141,7 @@ data class BiliHookSymbols(
 }
 
 object DexKitRuleVersions {
-    const val CURRENT = 35
+    const val CURRENT = 38
 }
 
 data class HookPointStatus(
@@ -1212,40 +1212,58 @@ data class RestoredHomeTopBarSymbols(
 )
 
 data class BottomBarSymbols(
-    val parserMethods: List<MethodDescriptor>,
-    val resourceMethods: List<MethodDescriptor>,
+    val tabHostSetTabsMethods: List<MethodDescriptor>,
+    val tabHostGetTabsMethods: List<MethodDescriptor>,
+    val baseOnViewCreatedMethods: List<MethodDescriptor>,
     val evidence: String,
 ) {
     fun toJson(): JSONObject = JSONObject()
-        .put("parserMethods", parserMethods.toJsonArray { it.toJson() })
-        .put("resourceMethods", resourceMethods.toJsonArray { it.toJson() })
+        .put("tabHostSetTabsMethods", tabHostSetTabsMethods.toJsonArray { it.toJson() })
+        .put("tabHostGetTabsMethods", tabHostGetTabsMethods.toJsonArray { it.toJson() })
+        .put("baseOnViewCreatedMethods", baseOnViewCreatedMethods.toJsonArray { it.toJson() })
         .put("evidence", evidence)
 
     fun restore(classLoader: ClassLoader): RestoredBottomBarSymbols? {
-        val parsers = parserMethods.mapNotNull { descriptor ->
+        val setTabs = tabHostSetTabsMethods.mapNotNull { descriptor ->
             val owner = classLoader.loadClassOrNull(descriptor.declaringClassName) ?: return@mapNotNull null
             descriptor.restore(owner)
         }
-        val resources = resourceMethods.mapNotNull { descriptor ->
+        val getTabs = tabHostGetTabsMethods.mapNotNull { descriptor ->
             val owner = classLoader.loadClassOrNull(descriptor.declaringClassName) ?: return@mapNotNull null
             descriptor.restore(owner)
         }
-        if (parsers.size != parserMethods.size || resources.size != resourceMethods.size) return null
-        return RestoredBottomBarSymbols(parsers, resources)
+        val onViewCreated = baseOnViewCreatedMethods.mapNotNull { descriptor ->
+            val owner = classLoader.loadClassOrNull(descriptor.declaringClassName) ?: return@mapNotNull null
+            descriptor.restore(owner)
+        }
+        if (
+            setTabs.size != tabHostSetTabsMethods.size ||
+            getTabs.size != tabHostGetTabsMethods.size ||
+            onViewCreated.size != baseOnViewCreatedMethods.size
+        ) return null
+        return RestoredBottomBarSymbols(setTabs, getTabs, onViewCreated)
     }
 
     companion object {
         fun fromJson(obj: JSONObject): BottomBarSymbols = BottomBarSymbols(
-            parserMethods = obj.optJSONArray("parserMethods").toList { MethodDescriptor.fromJson(it) },
-            resourceMethods = obj.optJSONArray("resourceMethods").toList { MethodDescriptor.fromJson(it) },
+            tabHostSetTabsMethods = obj.optJSONArray("tabHostSetTabsMethods").toList {
+                MethodDescriptor.fromJson(it)
+            },
+            tabHostGetTabsMethods = obj.optJSONArray("tabHostGetTabsMethods").toList {
+                MethodDescriptor.fromJson(it)
+            },
+            baseOnViewCreatedMethods = obj.optJSONArray("baseOnViewCreatedMethods").toList {
+                MethodDescriptor.fromJson(it)
+            },
             evidence = obj.optString("evidence", "-"),
         )
     }
 }
 
 data class RestoredBottomBarSymbols(
-    val parserMethods: List<Method>,
-    val resourceMethods: List<Method>,
+    val tabHostSetTabsMethods: List<Method>,
+    val tabHostGetTabsMethods: List<Method>,
+    val baseOnViewCreatedMethods: List<Method>,
 )
 
 data class HomeRecommendTabSymbols(
